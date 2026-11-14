@@ -61,18 +61,147 @@ time-domain data from \gaia\ \dr{4}, \sdssv, and future stellar surveys.
 \section{Introduction}
 \label{sec:intro}
 
-% Population studies of stellar companions (binary stars, exoplanets, compact objects)
-% often start by selecting systems with well-constrained orbits from larger catalogs.
-% Turning such a sample into a population inference then requires modeling the parent
-% catalog selection function \texttt{and} the detection efficiency of the orbit-fitting
-% pipeline, which often involves expensive injection and recovery tests.
-% An alternate approach is to instead include all sources from the parent catalog in the
-% inference, which then only requires the survey selection function.
-% However, this approach necessitates a method for orbital parameter inference that can
-% handle sparse, noisy, or null signals in the same framework as the well-constrained
-% systems.
+Stars, most often, have at least one companion --- another star, a brown dwarf, planet,
+or compact object, for example \citep[e.g.,][]{TODO, Moe}.
+The distribution of companion properties (e.g., mass, orbital period, eccentricity,
+etc.), their occurrence rates, and their dependence on the properties of the host star
+all provide important constraints on models of star formation, binary interactions,
+planet formation, and stellar evolution \citep{TODO}.
+These systems are also important benchmarks for stellar astrophysics \citep{TODO}.
+Measuring distributions of companion properties requires time-domain survey data and
+inferences of the orbital parameters of large samples of systems.
 
-\todo{Write this.}
+Population studies of stellar companions often start by selecting systems with
+well-constrained orbits from larger catalogs.
+For example, a typical pipeline will fit an orbit to every source in some survey sample,
+keep the orbital solutions that pass some cuts on significance or goodness of fit, and
+then use the resulting sample to infer population statistics.
+An example of this approach is the way non-single stars (NSS) are processed in the
+\gaia\ \dr{3} astrometric binary catalog, in which a decision is made for each source
+whether to fit a single-star or binary-star model, and only stars that pass a
+significance cut on the binary model are included in the final catalog
+\citep{Halbwachs:2023, GaiaDR3Multiplicity}.
+However, significance cuts often depend on the orbital parameters themselves, so to turn
+a sample defined in this way into a robust population inference, one must  model both
+the parent catalog selection function \textsl{and} the detection efficiency of the
+orbit-fitting-and-selection pipeline, which often requires expensive injection and
+recovery tests \citep[e.g.,][]{Cumming:2008, Fulton:2021, ElBadry:2024}.
+\todo{check these and maybe add references}
+
+An alternate approach to stellar companion population inference is to instead include
+all sources from the parent catalog in the model, whether or not their orbits are
+precisely constrained.
+In the context of a hierarchical Bayesian model (hereafter ``hierarchical model''), the
+likelihood function $\mathcal{L}$ for the population parameters $\vec{\alpha}$ (e.g.,
+parameters that describe the companion mass function, period distribution, etc.) follows
+a hierarchical structure in which the full likelihood is a product over the individual
+likelihoods for each source $n$ with orbital parameters $\vec{\theta}_n$ in the parent
+catalog:
+\begin{align}
+  \mathcal{L}(\vec{\alpha} \,;\, \{D_n\}, \{\vec{\theta}_n\}) &=
+    p(\{D_n\}, \{\vec{\theta}_n\} \given \vec{\alpha}) \\
+    &= \prod_n p(D_n \given \vec{\theta}_n) \, p(\vec{\theta}_n \given \vec{\alpha})
+    \quad .
+\end{align}
+Here the per-system orbital parameters $\vec{\theta}_n$ are explicitly included in the
+model, which means the dimensionality of the parameter space grows with the number of
+sources in the parent catalog (and this is generally bad).
+A common approach to make the hierarchical model more tractable is to marginalize over
+the per-system parameters $\vec{\theta}_n$ to obtain a marginalized likelihood function
+\begin{align}
+  \mathcal{L}(\vec{\alpha} \,;\, \{D_n\}) &=
+    p(\{D_n\} \given \vec{\alpha}) \\
+  &= \prod_n
+    \int \dd\vec{\theta}_n \,
+      p(D_n \given \vec{\theta}_n) \, p(\vec{\theta}_n \given \vec{\alpha})
+    \quad ,
+\end{align}
+but this integral is often not analytically solvable.
+One can instead approximate the integral with Monte Carlo integration, which can be done
+by drawing posterior samples of the per-system parameters $\vec{\theta}_n$ for each
+source independently under an ``interim'' prior $p(\vec{\theta}_n \given
+\vec{\alpha}_0)$, and then re-weighting the samples to the population prior
+$p(\vec{\theta}_n \given \vec{\alpha})$ \citep{Hogg:2010, Foreman-Mackey:2014,
+Price-Whelan:2020}:
+\begin{equation}
+  p(\{D_n\} \given \vec{\alpha}) \approx
+    \prod_n \frac{Z_{{\rm int},n}}{K_n}
+      \sum_{k=1}^{K_n}
+        \frac{p(\vec{\theta}_{nk} \given \vec{\alpha})}
+        {p(\vec{\theta}_{nk} \given \vec{\alpha}_0)}
+  \quad ,
+  \label{eq:hierarchical}
+\end{equation}
+where $Z_{{\rm int},n}$ is the evidence for the data $D_n$ of source $n$ under the
+interim prior (which often can be ignored if the same interim prior is used for all
+sources).
+
+In the product in Equation~\ref{eq:hierarchical}, a source with uninformative data would
+contribute samples that follow the interim prior and therefore do not constrain
+$\vec{\alpha}$ (or do so weakly), but importantly the source still contributes to the
+product.
+In this framework, we do not need to make a decision about whether a source passes some
+detection threshold, and therefore we do not need to model the detection efficiency of
+our orbit fitting method (and therefore we do not need to do injection and recovery
+tests).
+The challenge (and computational cost) here instead is that we much generate posterior
+samples of the orbital parameters $\vec{\theta}_n$ for every source in the parent
+catalog, including sources with sparse or noisy data, or apparently null signals.
+This is a challenge for Keplerian orbit fitting: with only a few radial velocity
+measurements, or astrometry at low signal-to-noise, the per-source likelihood as a
+function of period can have many narrow modes separated by wide regions of low
+probability \citep[e.g.,][]{Price-Whelan:2017}.
+Markov chain Monte Carlo (MCMC) methods struggle in this regime.
+
+We previously developed \joker\ \citep{Price-Whelan:2017} for this regime with RV data
+from the Apache Point Observatory Galactic Evolution Experiment (\apogee) in mind, which
+often has only a few (but precisely-measured) RV measurements for hundreds of thousands
+of stars.
+\joker\ is a custom rejection sampler that can generate independent posterior samples of
+Keplerian orbital parameters for a single source even when the posterior is highly
+multimodal.
+The trick we use to make rejection sampling tractable is that we analytically
+marginalize over the linear parameters in the Keplerian model (the velocity
+semi-amplitude, systemic velocity, and sometimes extra polynomial trend parameters) to
+reduce the dimensionality of the parameter space that we need to sample over.
+An advantage to rejection sampling is that the returned samples are independent draws
+from the posterior, however many modes there are, and we do not need to worry about
+convergence or autocorrelation analysis of chains (as we do with MCMC).
+\joker\ has been used in a number of population studies of stellar companions
+\citep[e.g.,][]{TODO}.
+
+Our anticipation of two contemporary stellar surveys --- \gaia\ \dr{4} and the Milky Way
+Mapper (MWM) program of \sdssv --- has motivated a ground-up redesign and
+re-implementation of the core ideas of \joker.
+\gaia\ \dr{4} \citep{TODO}, which will be released on 2026-12-02, will include a wealth
+of time-series data, including epoch astrometry and radial velocities for tens of
+millions to billions of stars.
+MWM \citep{TODO} is continuing the \apogee\ survey legacy and will provide precise
+multi-epoch RVs for millions of stars, most of which will have only a few visits.
+For many of these sources, we will have both RVs and epoch astrometry, and to make the
+most of the full samples we will need to be able to model the faint and therefore low
+signal-to-noise companions.
+Also, the data volumes expected from these surveys are immense, and we will need to be
+able to generate posterior samples efficiently for millions of sources, which is
+prohibitive for the current \joker\ implementation.
+
+Here we present \harv: a successor to \joker\ and full re-implementation built on \jax\
+\citep{Bradburg:2018} and \package{numpyro} \citep{Phan:2019}.
+\harv\ is faster and more flexible than the original \joker\ implementation, and works
+with both RVs and \gaia\ epoch astrometry (with support for more data types to come).
+Because it is built on \jax, the same model code can be compiled and run on CPUs or
+GPUs, and is differentiable, so can be used in gradient-based MCMC samplers or
+variational inference methods instead of the built-in rejection sampler, when
+appropriate.
+
+Many packages and methods have been developed to efficiently sample or fit Keplerian
+orbits to data.
+For example, for RV data (\texttt{RadVel} \citealt{Fulton:2018}; \texttt{juliet} \citealt{Espinoza:2019}), for astrometry and combinations of data (\texttt{orvara} \citealt{Brandt:2021}; \texttt{orbitize!} \citealt{Blunt:2020}; \texttt{Octofitter} \citealt{Thompson:2023}; \texttt{kima} \citealt{Faria:2018}; \texttt{Exo-Striker} \citealt{Trifonov:2019}; \texttt{exoplanet} \citealt{Foreman-Mackey:2021}), and for forward modeling \gaia\ epoch astrometry and the \dr{3} orbit-fitting pipeline (\texttt{gaiamock}, \citealt{El-Badry:2024}).
+These are designed mainly to characterize individual systems in which a companion has
+been confidently detected, using MCMC or nested sampling.
+The goal of \harv\ is to enable population inference with large samples of sources.
+
+\todo{Mention below the Orvara marginalizations and that we use the kepler solver}
 
 
 %--------------------------------------------------------------------
@@ -137,6 +266,8 @@ time-domain data from \gaia\ \dr{4}, \sdssv, and future stellar surveys.
 
   \todo{Write this.}
 
+  Daniel Y, Sheila, Victor, Hogg, Foreman-Mackey, Will Thompson.
+
   \todo{LLM acknowledgement}
 
 \begin{itemize}
@@ -153,8 +284,7 @@ time-domain data from \gaia\ \dr{4}, \sdssv, and future stellar surveys.
 %           astropy, arviz, h5py, matplotlib, numpy, scipy, thejoker
 %           }
 
-\bibliography{refs}{}
 \bibliographystyle{AASTeX7/aasjournalv7}
-
+\bibliography{refs}{}
 
 \end{document}
