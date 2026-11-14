@@ -1,17 +1,21 @@
-% NOTES:
+% TODO:
 % -
 
 \documentclass[twocolumn]{AASTeX7/aastex701}
 
-\shorttitle{TODO: short title}
+\shorttitle{\texttt{harv}: fast companion orbit inference}
 \shortauthors{Price-Whelan et al.}
 
 \usepackage{preamble/preamble-adrn}
 
+\newcommand{\harv}{\package{harv}}
+\newcommand{\joker}{\textsl{The Joker}}
+
 \begin{document}
 
 \title{
-  A cool title
+  \texttt{harv}: \\
+  Fast companion orbit inference with radial velocities and \gaia\ epoch astrometry
 }
 
 \author[orcid=0000-0003-0872-7098]{Adrian M. Price-Whelan}
@@ -22,7 +26,33 @@
 }
 
 \begin{abstract}
-\todo{Write this.}
+Population studies of stellar companions (binary stars, exoplanets, compact objects)
+often start from a sample of systems with well-constrained orbits.
+Inferring population statistics from such a sample requires modeling the detection
+efficiency of the orbit-fitting pipeline along with the survey selection function,
+usually through injection/recovery tests.
+An alternative approach is to include every source from the parent sample in the
+population inference.
+This requires generating orbital parameter posterior samples even for sources with
+sparse, noisy, or null signals in the same manner as the well-constrained systems.
+\harv\ is an open-source Python package that enables posterior sampling with radial
+velocities (RVs), \gaia\ epoch astrometry, or both, across a range of data quality
+regimes.
+Like its predecessor \joker, \harv\ enables posterior sampling of Keplerian orbit
+parameters either through traditional Markov chain Monte Carlo (MCMC) or via a custom
+rejection sampler that analytically marginalizes over linear parameters in the model to
+improve efficiency.
+For sparse or uninformative data, the posterior is often highly multimodal, which makes
+MCMC inefficient and unreliable, but the rejection sampler still returns independent
+posterior samples for such cases.
+\harv\ is built on \jax, which provides just-in-time compilation, CPU and GPU
+execution, and automatic differentiation for gradient-based inference methods.
+We demonstrate \harv\ on (1) sparse \apogee\ RVs with multimodal posteriors, (2) the
+planet Gaia-4b, jointly fitting RVs and \gaia\ \dr{4} pre-release astrometry, and (3)
+the active planet host HD~285968, using a Gaussian process to model the stellar
+variability.
+\harv\ is designed to both be flexible, and to scale to the millions of sources with
+time-domain data from \gaia\ \dr{4}, \sdssv, and future stellar surveys.
 \end{abstract}
 
 % =====================================================================================
@@ -31,16 +61,64 @@
 \section{Introduction}
 \label{sec:intro}
 
+% Population studies of stellar companions (binary stars, exoplanets, compact objects)
+% often start by selecting systems with well-constrained orbits from larger catalogs.
+% Turning such a sample into a population inference then requires modeling the parent
+% catalog selection function \texttt{and} the detection efficiency of the orbit-fitting
+% pipeline, which often involves expensive injection and recovery tests.
+% An alternate approach is to instead include all sources from the parent catalog in the
+% inference, which then only requires the survey selection function.
+% However, this approach necessitates a method for orbital parameter inference that can
+% handle sparse, noisy, or null signals in the same framework as the well-constrained
+% systems.
+
+\todo{Write this.}
+
+
+%--------------------------------------------------------------------
+\section{Software design}
+\label{sec:design}
+
+\todo{Write this.}
+
+
+%--------------------------------------------------------------------
+\section{Inference}
+\label{sec:inference}
+
 \todo{Write this.}
 
 %--------------------------------------------------------------------
-\section{Data}
-\label{sec:data}
+\subsection{Marginalizing the linear parameters}
+\label{sec:inference-linear}
+
+%--------------------------------------------------------------------
+\subsection{Rejection sampling}
+\label{sec:inference-rejection}
+
+%--------------------------------------------------------------------
+\section{Case studies}
+\label{sec:case-studies}
 
 \todo{Write this.}
 
 %--------------------------------------------------------------------
-% ... more sections
+\subsection{Sparse APOGEE radial velocities}
+\label{sec:cases-apogee}
+
+\todo{Write this.}
+
+%--------------------------------------------------------------------
+\subsection{Gaia-4: joint radial velocities and DR4 astrometry}
+\label{sec:cases-gaia4}
+
+\todo{Write this.}
+
+%--------------------------------------------------------------------
+\subsection{HD 285968: a planet under stellar activity}
+\label{sec:cases-hd285968}
+
+\todo{Write this.}
 
 %--------------------------------------------------------------------
 \section{Discussion}
@@ -48,50 +126,32 @@
 
 \todo{Write this.}
 
+
 %--------------------------------------------------------------------
-\section{Summary and Conclusions}
+\section{Summary}
 \label{sec:summary}
 
 \todo{Write this.}
 
-%--------------------------------------------------------------------
-% \appendix
-
-% \section{TODO name}
-% \label{apx:name}
-
-% \todo{Write this.}
-
-% ====================================================================================
-
 \begin{acknowledgments}
-\todo{Write this.}
+
+  \todo{Write this.}
+
+  \todo{LLM acknowledgement}
+
+\begin{itemize}
+  \item Flatiron Institute and CCA.
+  \item Data acknowledgments: SDSS (\apogee), \gaia\ and DPAC, ESO and HARPS (programme
+    IDs), and HPF, NEID and FIES as their data policies require.
+\end{itemize}
 \end{acknowledgments}
 
-% \begin{contribution}
+% \facilities{Gaia, Sloan (APOGEE), ESO:3.6m (HARPS), HET (HPF), WIYN (NEID), NOT (FIES)}
 
-%%SC was responsible for writing and submitting the manuscript.
-%%WWM came up with the initial research concept and edited the manuscript.
-%%OTS obtained the funding and edited the manuscript.
-%%EBF provided the formal analysis and validation. He also edited the manuscript.
-%%GEH Supervised the undergraduates, wrote the software and administers the project github and Zenodo repositories.
-%%
-%% Authors can use the Contributor Role Taxonomy (CRediT) at
-%% https://credit.niso.org
-%% for ideas on how write a good statement tailored to their needs.
-
-% \end{contribution}
-
-% \facilities{HST(STIS), Swift(XRT and UVOT), AAVSO, CTIO:1.3m, CTIO:1.5m, CXO}
-
-% \software{astropy \citep{2013A&A...558A..33A,2018AJ....156..123A,2022ApJ...935..167A},
-%           Cloudy \citep{2013RMxAA..49..137F},
-%           Source Extractor \citep{1996A&AS..117..393B}
+% TODO: software
+% \software{harv, JAX, numpyro, equinox, unxt, quax, tinygp,
+%           astropy, arviz, h5py, matplotlib, numpy, scipy, thejoker
 %           }
-
-% \appendix
-% \section{Appendix section example}
-
 
 \bibliography{refs}{}
 \bibliographystyle{AASTeX7/aasjournalv7}
