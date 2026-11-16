@@ -1,12 +1,6 @@
-# A new paper
+# harv: the paper
 
-## TODO:
-
-- [ ] Initialize submodules: `git submodule init && git submodule update --recursive --remote`
-- [ ] Update project name in `pyproject.toml` and other files
-- [ ] Update copyright year in `licenses/LICENSE` file
-- [ ] Fill in this README with project-specific information
-- [ ] Enable pre-commit.ci for this repo.
+This repo contains a paper describing [harv](https://github.com/adrn/harv).
 
 ## License
 
