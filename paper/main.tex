@@ -422,7 +422,7 @@ implemented in \harv.
 
 %--------------------------------------------------------------------
 \subsection{Marginalizing the linear parameters}
-\label{sec:inference-linear}
+\label{sec:methods-marginal}
 
 As with the premise described in Section~\ref{sec:intro}, we assume that we have some
 data $\vec{y} = y_n$ for $n=1,\ldots,N$ measurements of the radial velocity, along-scan
@@ -488,10 +488,8 @@ $\vec{\theta}$.
 Also, $\mat{C}$ can be dense.
 In code, when $\mat{C}$ is diagonal, we do not construct the $N \times N$ covariance
 matrix in Equation~(\ref{eq:marginal-likelihood}) and we instead use the matrix
-inversion and determinant lemmas so the evaluation cost of the marginal likelihood
-scales as $N\,Q^2 + Q^3$.
-When $\mat{C}$ is dense (e.g., with a Gaussian process model component), the cost scales
-as $N^3$.
+inversion and determinant lemmas to improve the evaluation cost of the marginal
+likelihood (which is the main computational bottleneck).
 
 The marginalization above requires that the prior pdf over each linear parameter is
 conjugate to the likelihood, which here means the prior pdf must be a normal
@@ -501,10 +499,144 @@ In code, if a user specifies a prior pdf for a linear parameter that is not
 fundamentally a normal distribution, then the linear parameter is sampled explicitly
 along with the nonlinear parameters.
 
+Often, however, an unconstrained Gaussian prior pdf is not appropriate for some
+parameters.
+Some linear parameters may have physical constraints on their allowed values (e.g., a
+true parallax must be positive, or in a double-lined ``SB2'' binary, the two stars must
+have opposite signs of the velocity semi-amplitude).
+For these cases we support truncated normal prior pdfs --- that is, a normal
+distribution that is set to zero outside of an allowed domain $\mathbb{S}$ (a lower
+bound, an upper bound, or both, for each truncated parameter) and properly normalized.
+The marginalization can still be done analytically, because the truncation does not
+change the refactorization in Equation~(\ref{eq:refactor}), it only restricts the domain
+of the integral over $\vec{\beta}$ to $\mathbb{S}$.
+The first term on the right-hand side of Equation~(\ref{eq:refactor}) does not depend on
+$\vec{\beta}$, so it can come out of the integral, and the marginal likelihood
+(Equation~\ref{eq:marginal-likelihood}) becomes
+\begin{equation}
+  p(\vec{y} \given \vec{\theta}) =
+    \frac{Z_{\rm post}}{Z_{\rm prior}} \,
+    p_{\rm untrunc}(\vec{y} \given \vec{\theta})
+  \quad ,
+  \label{eq:truncated}
+\end{equation}
+where $p_{\rm untrunc}(\cdot)$ is Equation~(\ref{eq:marginal-likelihood}) evaluated with
+the untruncated prior, and
+\begin{align}
+  Z_{\rm prior} &= \int_\mathbb{S} \dd\vec{\beta} \,
+    \norm(\vec{\beta} \given \vec{\mu}, \mat{\Lambda})
+    \label{eq:truncated-Zprior} \\
+  Z_{\rm post} &= \int_\mathbb{S} \dd\vec{\beta} \,
+    \norm(\vec{\beta} \given \vec{a}, \mat{A})
+  \label{eq:truncated-Zpost}
+\end{align}
+are the integrals of the untruncated prior pdf and of the untruncated conditional
+posterior pdf over the domain $\mathbb{S}$.
+So, the new marginal likelihood is the untruncated marginal likelihood, multiplied by
+the fraction of the conditional \textit{posterior} that sits in the domain $\mathbb{S}$,
+and divided by the fraction of the \textit{prior} that sits in the domain $\mathbb{S}$.
+
+We often have independent prior pdfs over the linear parametesr, which means that
+$\mat{\Lambda}$ is diagonal, so the integral for $Z_{\rm prior}$ in
+Equations~(\ref{eq:truncated-Zprior}) is just a product of one-dimensional integrals
+that can be evaluated straightforwardly using the normal cumulative distribution
+function (cdf).
+The conditional posterior pdf, however, is not generally independent, and this is what
+makes the marginalization over truncated parameters tricky.
+The linear parameters are covariant in the conditional posterior pdf because of the term
+$\transp{\mat{X}}\,\mat{C}^{-1}\,\mat{X}$ in $\mat{A}^{-1}$, so $Z_{\rm post}$ is the
+integral of a multivariate Gaussian with a dense covariance matrix over a rectangular
+domain.
+
+The linear parameters that are not truncated (but have normal prior pdfs) marginalize
+away straightforwardly using the refactorization in Equation~(\ref{eq:refactor}), and
+the remaining truncated parameters can then be handled using the corresponding elements
+of $\vec{a}$ and $\mat{A}$.
+For example, if there are $Q$ linear parameters and only one parameter $\beta_q$ is truncated to a domain $(l, h)$, then
+\begin{align}
+  Z_{\rm post} &= \Phi\!\left(\frac{h - a_k}{s_k}\right)
+    - \Phi\!\left(\frac{l - a_k}{s_k}\right) \\
+  s_k^2 &= A_{kk}
+  \quad ,
+\end{align}
+where $\Phi$ is the standard normal cdf.
+When two parameters are truncated, $Z_{\rm post}$ is a sum over the four corners of the
+rectangular domain and we give the relevant expressions in Appendix~\ref{sec:TODO}.
+When more than two parameters are truncated there is no comparably simple expression, so
+we do not currently support this .
+After the nonlinear parameters have been sampled, we generate samples of the linear
+parameters from the truncated conditional posterior pdf by first sampling the truncated
+parameters and then sampling the remaining linear parameters from their (Gaussian) pdf
+conditioned on those values.
+
+We also support prior pdfs that are a mixture of normal distributions, which are useful
+for approximating any other prior pdf shape (e.g., power laws, lognormals, etc.).
+The expressions above generalize to also support prior pdfs that are mixtures of normal
+distribtions, $p(\vec{\beta} \given \vec{\theta}) \propto \sum_i w_i\, \norm(\vec{\beta}
+\given \vec{\mu}_i, \mat{\Lambda}_i)$ with $\sum_i w_i = 1$.
+The integrals over $\vec{\beta}$ then become weighted sums over the mixture components,
+\begin{equation}
+  p(\vec{y} \given \vec{\theta}) =
+    \frac{\sum_ i w_i\,Z_{{\rm post},i}\,
+      p_{{\rm untrunc},i}(\vec{y} \given \vec{\theta})}
+    {\sum_i w_i\,Z_{{\rm prior},i}}
+  \quad ,
+  \label{eq:mixture}
+\end{equation}
+where the subscript $i$ indicates a quantity computed with the mean and variance of
+mixture component $i$, and all mixture components share the same truncation domain.
+
+%--------------------------------------------------------------------
+\subsection{Priors that depend on the nonlinear parameters}
+\label{sec:methods-priors-nonlinear}
+
+Using normal prior pdfs for the linear parameters is convenient because it allows us to
+analytically marginalize over those parameters, but unconditional normal priors can lead
+to unphysical or unrealistic prior beliefs about the systems being modeled.
+As an example, consider the velocity semi-amplitude $K$ of a Keplerian orbit, which is a
+linear parameter in the radial velocity model (Equation~\ref{eq:rv-model}).
+A normal prior pdf on $K$ that is invariant to period $P$ implies that the prior pdf on
+the companion mass $m_2$ is a function of period, which is probably not what we want
+\citep{Price-Whelan:2020}.
+Instead, we probably want to pick a prior scale that is fixed in some other physical
+quantity, such as the companion mass or the physical size of the orbit.
+In \citet{Price-Whelan:2020}, we defined a scale for the prior on $K$ that is fixed in companion mass, where the variance of the prior pdf is
+\begin{equation}
+  \sigma_K^2 = \sigma_{K,0}^2\,\left(\frac{P}{P_0}\right)^{-2/3}\,(1 - e^2)^{-1}
+  \label{eq:sigma-K}
+\end{equation}
+where $\sigma_{K,0}$ is a velocity scale and $P_0$ is a reference period.
+At fixed primary mass, this has a fixed form in companion mass, which is a more
+physically-motivated choice.
+
+We can make a similar argument for the prior on the angular semi-major axis of the
+photocenter orbit, $a_0$, in astrometric models.
+If we adopt a prior on $a_0$ that is the same at all periods and distances, then we are
+implicitly assuming that the physical size of the orbit is a function of period and
+distance, which is probably not a good assumption.
+For astrometric models we therefore adopt a zero-mean normal prior on $a_0$ and on
+the proper motion components with standard deviations
+\begin{equation}
+  \sigma_{a} = \sigma_{a,0}\,\left(\frac{P}{P_0}\right)^{2/3}\,\varpi
+  \quad \mathrm{and} \quad
+  \sigma_\mu = \sigma_{v,0}\,\varpi
+  \quad ,
+  \label{eq:sigma-a}
+\end{equation}
+where $\sigma_{a,0}$ is a length scale (e.g., units like astronomical unit, au) and
+$\sigma_{v,0}$ is a velocity scale, so that the priors are fixed in physical size and in
+tangential velocity.
+These expressions depend on the parallax $\varpi$, which is itself a linear parameter
+of the astrometric model.
+When using these priors, we therefore have to sample the parallax explicitly along with
+the nonlinear parameters, and we cannot marginalize over it.
+
 
 %--------------------------------------------------------------------
 \subsection{Rejection sampling}
 \label{sec:inference-rejection}
+
+
 
 %--------------------------------------------------------------------
 \section{Case studies}
