@@ -633,9 +633,165 @@ the nonlinear parameters, and we cannot marginalize over it.
 
 
 %--------------------------------------------------------------------
-\subsection{Rejection sampling}
-\label{sec:inference-rejection}
+\subsection{The rejection sampler}
+\label{sec:methods-rejection}
 
+\harv\ models are implemented on top of \package{numpyro}, and prior pdfs are specified
+using \package{numpyro} distributions.
+This means that we can use any of the inference methods implemented in \package{numpyro}
+to generate posterior samples of the parameters.
+However, for all of the reasons described in Section~\ref{sec:intro}, we expect that the
+posterior pdfs for many sources will be highly multimodal and structured, and so we also
+provide a custom rejection sampler that is designed specifically to handle these cases.
+
+The core algorithm that the rejection sampler uses is the same as in \joker\
+\citep{Price-Whelan:2017}:
+\begin{enumerate}
+  \item Generate $J$ samples $\vec{\theta}_j$ from the prior pdf over the nonlinear
+    parameters (and over any linear parameters that are explicitly samples, i.e., not
+    marginalized).
+  \item Evaluate the marginal likelihood $G_j = G(\vec{\theta}_j)$ for each sample. \todo{use G notation (not Q, which is now a number above) in the math above}
+  \item Find the maximum value $G_{\rm max}$ across all of the samples.
+  \item For each sample $j$, choose a random number $u_j$ uniformly between 0 and
+    $G_{\rm max}$, and reject the sample if $G_j < u_j$.
+  \item For each of the $M$ samples that survive, generate a sample of the linear
+    parameters from the conditional posterior pdf,
+    $\norm(\vec{\beta} \given \vec{a}_j, \mat{A}_j)$.
+\end{enumerate}
+If the sampling of the prior pdf is dense enough (or the data are uninformative), many
+samples will survive the rejection step.
+The surviving samples are, by construction, a fair and uncorrelated sampling from the
+posterior pdf.
+This is a brute force method, and for many sources, most of the computational effort
+will be spent evaluating the marginal likelihood for samples that are ultimately
+rejected.
+But what we gain is that there is no burn in, no need to compute autocorrelation times,
+no need to tune proposal distributions, and no need to worry about convergence (in the
+MCMC sense).
+The likelihood evaluations are also embarrassingly parallel, so the method is easily
+parallelized across multiple CPU cores or GPUs.
+We do, however, have to choose the number of prior samples $J$ to generate, and we need
+to pay attention to the number of samples that survive the rejection step, $M$, and we
+may want to check that we have resolved the dominant modes enough that $G_{\rm max}$ is
+a good estimate of the true maximum of the marginal likelihood.
+
+We have implemented a few new features that help make the rejection sampling more
+efficient and robust, or that differ from the default behavior of \joker.
+
+
+\subsubsection{Returning a fixed number of samples}
+
+The number of samples that survive the rejection step, $M$, will depend on the data.
+If a source has very informative data (many epochs, high signal-to-noise, etc.), then
+$M$ will be small, and sometimes even just one.
+In the opposite regime, $M$ can be very large.
+When processing many sources, it is more convenient (and, with JIT compiled code, much
+faster) to return the same number of samples for every source.
+We therefore optionally replace the fourth step above.
+Instead of rejection, \harv\ can return the $M$ prior samples with the largest marginal
+likelihood values for a fixed $M$, along with their importance weights
+\begin{equation}
+  w_j = \frac{G_j}{\sum_{j'=1}^{J} G_{j'}}
+  \quad ,
+  \label{eq:weights}
+\end{equation}
+which are normalized over all $J$ prior samples.
+These samples are weighted samples from the posterior pdf, and give us a diagnostic that
+we can use to assess the returned samples.
+The sum of the $M$ importance weights (Equation~\ref{eq:weights}) is the fraction of the
+posterior mass that the returned samples contain, so it should be close to one if $M$ is
+large enough.
+
+
+\subsubsection{Validating the maximum marginal likelihood, $G_{\rm max}$}
+
+\todo{Decide on whether we merge the relevant PR and if so describe it as another diagnostic check.}
+
+
+\subsubsection{Evidence estimates and other sampling metadata}
+
+The fully marginalized likelihood (FML) $p(\vec{y})$, or the evidence, is the integral
+of the marginal likelihood over the prior pdf of the nonlinear parameters,
+\begin{equation}
+  p(\vec{y}) = \int \dd\vec{\theta} \,p(\vec{y} \given \vec{\theta})\,p(\vec{\theta})
+  \quad .
+\end{equation}
+If we have samples $\vec{\theta}_j$ from the prior pdf, then we can estimate the
+FML as
+\begin{equation}
+  p(\vec{y}) \approx \frac{1}{J} \sum_{j=1}^{J} p(\vec{y} \given \vec{\theta}_j)
+  \quad .
+\end{equation}
+This is a Monte Carlo estimate of the FML integral that uses all $J$ prior samples, and
+it is unbiased, but it can have high variance.
+The variance of the estimate is set by the effective sample size (ESS) of the
+importance weights (Equation~\ref{eq:weights}),
+\begin{equation}
+  J_{\rm eff} = \frac{1}{\sum_{j=1}^{J} w_j^2}
+  \quad .
+\end{equation}
+The ESS $J_{\rm eff}$ and the sum of the returned weights (Equation~\ref{eq:weights})
+provide two useful diagnostics that we can use to check the samples returned by \harv:
+$J_{\rm eff}$ is computed from all $J$ prior samples, and tells us whether the sampling
+of the prior pdf was dense enough to resolve the posterior pdf.
+If $J_{\rm eff} \gg 1$, many prior samples contribute to the posterior pdf, and the
+uncertainty on $\ln p(\vec{y})$ is approximately $J_{\rm eff}^{-1/2}$.
+If $J_{\rm eff} \approx 1$, a single prior sample dominates, and the posterior pdf is
+probably much narrower than the typical spacing between prior samples.
+In this regime, the returned samples locate a mode of the posterior but do not resolve
+it, so the evidence estimate is unreliable.
+If the sum of the $M$ returned weights is close to one, this tells us that $M$ is large
+enough to contain most of the posterior mass.
+\harv\ will compute these diagnostics when prompted and return these along with the FML
+estimate with the samples.
+
+There are three possible outcomes of the rejection sampling for a given source
+\citep{Price-Whelan:2017}:
+\begin{enumerate}
+  \item Many samples survive the rejection, $J_{\rm eff} \gg 1$. In this case, we are
+    done for that source. This is the typical outcome for sparse or noisy data
+    (Section~\ref{sec:cases-apogee}).
+  \item Few samples survive, $J_{\rm eff} \sim 1$, and these samples are unimodal in
+    period (i.e., their range in period is smaller than $\Delta = 4\,P_{\rm min}^2 /
+    (2\pi\,T)$, where $P_{\rm min}$ is the smallest period among the samples and $T$ is
+    the time spanned by the data, as in \citealt{Price-Whelan:2017}). In this case, we
+    assume that the posterior pdf is effectively unimodal, and we can use the surviving
+    samples as an initialization for standard inference methods (e.g., MCMC). This is
+    the typical outcome for data with a high signal-to-noise ratio
+    (Section~\ref{sec:cases-gaia4}).
+  \item Few samples survive, $J_{\rm eff} > 1$ but is small, and the samples span a
+    period range larger than $\Delta$.
+    In this case, the posterior pdf is probably multimodal, and in the context of \harv,
+    more prior samples are needed. This is expensive.
+\end{enumerate}
+
+\subsubsection{Using the returned samples in a hierarchical inference}
+
+To use the returned samples within a hierarchical inference, one can use the importance
+weights to reweight the samples to a new prior pdf, $p_{\rm H}(\vec{\theta} \given
+\vec{\alpha})$, that depends on the hyperparameters $\vec{\alpha}$ of a population
+model.
+The likelihood for the data from one source given the hyperparameters is an
+importance-sampling sum over the ratio of the new prior pdf to the prior pdf that was
+used for the sampling (the interim prior; \citealt{Hogg:2010}),
+\begin{equation}
+  p(\vec{y} \given \vec{\alpha}) \propto
+    \sum_j w_j \, \frac{p_{\rm H}(\vec{\theta}_j \given \vec{\alpha})}{p(\vec{\theta}_j)}
+  \quad ,
+  \label{eq:reweight}
+\end{equation}
+where the subscript ``H'' indicates the hierarchical prior pdf, the sum is over the
+returned samples, and the constant we dropped does not depend on $\vec{\alpha}$.
+For samples that are returned from the rejection step, which are unweighted, this is
+the mean of the prior ratio over the samples.
+This requires that the interim prior pdf is nonzero everywhere that the new prior pdf is
+nonzero, and it generally works better when the interim prior is broader than the
+population prior.
+The ESS of the terms in the sum tells us whether the returned samples are dense
+enough to resolve the posterior pdf under the \textit{new} prior pdf.
+To make this possible without re-evaluating the prior, \harv\ can also optionally output
+the value of the interim prior pdf, $\ln p(\vec{\theta}_j)$, at each of the returned
+samples.
 
 
 %--------------------------------------------------------------------
