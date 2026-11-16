@@ -196,7 +196,13 @@ appropriate.
 
 Many packages and methods have been developed to efficiently sample or fit Keplerian
 orbits to data.
-For example, for RV data (\texttt{RadVel} \citealt{Fulton:2018}; \texttt{juliet} \citealt{Espinoza:2019}), for astrometry and combinations of data (\texttt{orvara} \citealt{Brandt:2021}; \texttt{orbitize!} \citealt{Blunt:2020}; \texttt{Octofitter} \citealt{Thompson:2023}; \texttt{kima} \citealt{Faria:2018}; \texttt{Exo-Striker} \citealt{Trifonov:2019}; \texttt{exoplanet} \citealt{Foreman-Mackey:2021}), and for forward modeling \gaia\ epoch astrometry and the \dr{3} orbit-fitting pipeline (\texttt{gaiamock}, \citealt{El-Badry:2024}).
+For example, for RV data (\texttt{RadVel} \citealt{Fulton:2018}; \texttt{juliet}
+\citealt{Espinoza:2019}), for astrometry and combinations of data (\texttt{orvara}
+\citealt{Brandt:2021}; \texttt{orbitize!} \citealt{Blunt:2020}; \texttt{Octofitter}
+\citealt{Thompson:2023}; \texttt{kima} \citealt{Faria:2018}; \texttt{Exo-Striker}
+\citealt{Trifonov:2019}; \texttt{exoplanet} \citealt{Foreman-Mackey:2021}), and for
+forward modeling \gaia\ epoch astrometry and the \dr{3} orbit-fitting pipeline
+(\texttt{gaiamock}, \citealt{El-Badry:2024}).
 \todo{check list and fix order}
 These are designed mainly to characterize individual systems in which a companion has
 been confidently detected, using MCMC or nested sampling.
@@ -262,7 +268,8 @@ the two-dimensional sky position onto the scan direction of the satellite over t
 We model the along-scan position $y_{\rm AL}$ at time $t$ as the sum of the standard
 five-parameter astrometric model and a Keplerian orbit of the photocenter
 \citep[e.g.,][]{Holl:2022}.
-In terms of the Thiele--Innes constants $(A, B, F, G)$ and the astrometric in-plane coordinates $(X, Y)$ of the orbit, the along-scan position is
+In terms of the Thiele--Innes constants $(A, B, F, G)$ and the astrometric in-plane
+coordinates $(X, Y)$ of the orbit, the along-scan position is
 \begin{align}
   y_{\rm AL}(t) =
     &\left[\alpha_0 + \mu_\alpha\,\Delta t + B\,X + G\,Y\right] \, \sin\psi \nonumber \\
@@ -352,9 +359,12 @@ As with any statistical model, we make a number of assumptions in \harv\ about t
 and the underlying physical systems we are modeling.
 For this version of \harv, we assume:
 \begin{itemize}
-  \item that each source has exactly one companion and that the motion is well described by the two-body problem,
-  \item that the measurement times are known and specified in a barycentric reference frame,
-  \item and that the noise is Gaussian with known variances, possibly inflated by additional parameters (see below).
+  \item that each source has exactly one companion and that the motion is well described
+  by the two-body problem,
+  \item that the measurement times are known and specified in a barycentric reference
+  frame,
+  \item and that the noise is Gaussian with known variances, possibly inflated by
+  additional parameters (see below).
 \end{itemize}
 For astrometry, we additionally assume that the measured position is that of the
 photocenter of the system.
@@ -393,7 +403,8 @@ nonlinear in the model prediction and cannot be analytically marginalized over.
 \label{sec:design-implementation}
 
 \harv\ models are built on \jax\ \citep{Bradbury:2018}.
-In a break from many packages in the \jax\ ecosystem, we require that all arrays and calculations are done in double precision (\texttt{float64}).
+In a break from many packages in the \jax\ ecosystem, we require that all arrays and
+calculations are done in double precision (\texttt{float64}).
 We use \package{numpyro} \citep{Phan:2019} to represent and reason about prior pdfs and
 to run MCMC or other inference methods, \package{equinox} \citep{Kidger:2021} as ...
 pytree dataclasses...., and \package{unxt} \citep{Starkman:TODO} so that data,
@@ -552,7 +563,8 @@ The linear parameters that are not truncated (but have normal prior pdfs) margin
 away straightforwardly using the refactorization in Equation~(\ref{eq:refactor}), and
 the remaining truncated parameters can then be handled using the corresponding elements
 of $\vec{a}$ and $\mat{A}$.
-For example, if there are $Q$ linear parameters and only one parameter $\beta_q$ is truncated to a domain $(l, h)$, then
+For example, if there are $Q$ linear parameters and only one parameter $\beta_q$ is
+truncated to a domain $(l, h)$, then
 \begin{align}
   Z_{\rm post} &= \Phi\!\left(\frac{h - a_k}{s_k}\right)
     - \Phi\!\left(\frac{l - a_k}{s_k}\right) \\
@@ -600,7 +612,8 @@ the companion mass $m_2$ is a function of period, which is probably not what we 
 \citep{Price-Whelan:2020}.
 Instead, we probably want to pick a prior scale that is fixed in some other physical
 quantity, such as the companion mass or the physical size of the orbit.
-In \citet{Price-Whelan:2020}, we defined a scale for the prior on $K$ that is fixed in companion mass, where the variance of the prior pdf is
+In \citet{Price-Whelan:2020}, we defined a scale for the prior on $K$ that is fixed in
+companion mass, where the variance of the prior pdf is
 \begin{equation}
   \sigma_K^2 = \sigma_{K,0}^2\,\left(\frac{P}{P_0}\right)^{-2/3}\,(1 - e^2)^{-1}
   \label{eq:sigma-K}
