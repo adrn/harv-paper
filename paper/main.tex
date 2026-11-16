@@ -217,6 +217,7 @@ parameters and a linear function of the others.
 That is, for a source with $N$ measurements $\vec{y}$, the prediction can be written as
 \begin{equation}
   \vec{y} = \mat{X}(\vec{\theta})\,\vec{\beta} + \mathrm{noise}
+  \label{eq:linear-model}
 \end{equation}
 where the $N \times Q$ design matrix $\mat{X}$ is, in general, a function of the
 nonlinear parameters $\vec{\theta}$ and $\vec{\beta}$ is a length-$Q$ vector of the
@@ -408,11 +409,98 @@ in the \jax\ ecosystem; we show an example of this in Section~\ref{sec:cases-int
 \section{Methods}
 \label{sec:methods}
 
-\todo{Write this.}
+The main goal of \harv\ is to enable generating posterior samples of orbital parameters
+for large numbers of sources even when the posterior pdf is highly multimodal or
+structured.
+As with \joker\ \citep{Price-Whelan:2017}, the main trick we use to make this more
+tractable is to analytically marginalize over the linear parameters in the model, which
+reduces the dimensionality of the parameter space that we need to sample over, and then
+implement a custom rejection sampler that can efficiently sample from the remaining
+nonlinear parameters.
+In this section, we describe the marginalization and rejection sampling methods
+implemented in \harv.
 
 %--------------------------------------------------------------------
 \subsection{Marginalizing the linear parameters}
 \label{sec:inference-linear}
+
+As with the premise described in Section~\ref{sec:intro}, we assume that we have some
+data $\vec{y} = y_n$ for $n=1,\ldots,N$ measurements of the radial velocity, along-scan
+position, or both for a star with a companion whose gravitational influence on the
+observed star is described by Keplerian motion.
+We assume that the data are Gaussian distributed around the model prediction with
+covariance matrix $\mat{C}$, and the measurement times $\vec{t} = t_n$ are known exactly
+in a barycentric reference frame.
+The data covariance matrix may be diagonal and fixed, if the observations are
+independent and the uncertainties are known, or it may include terms that depend on
+parameters of the model, such as a jitter (white noise) term $s^2\,\identity$ with
+$\identity$ as the $N \times N$ identity matrix, or a Gaussian process model for
+correlated noise $\mat{\Sigma}_\mathrm{GP}$.
+The model prediction is a linear function of some parameters $\vec{\beta}$ and a
+nonlinear function of the remaining parameters $\vec{\theta}$, as in
+Equation~\ref{eq:linear-model}, where $\mat{X}(\vec{\theta})$ is the $N \times Q$ design
+matrix (which depends on $\vec{\theta}$) and $\vec{\beta}$ contains the $Q$ linear
+parameters (Table~\ref{tab:parameterizations}), so that the likelihood is a Gaussian,
+\begin{equation}
+  p(\vec{y} \given \vec{\theta}, \vec{\beta}) =
+    \norm(\vec{y} \given \mat{X}(\vec{\theta})\,\vec{\beta}, \mat{C}) \quad .
+\end{equation}
+If the prior pdf over the linear parameters is also Gaussian (and potentially dependent
+on the nonlinear parameters $\vec{\theta}$),
+\begin{equation}
+  p(\vec{\beta} \given \vec{\theta}) =
+    \norm(\vec{\beta} \given \vec{\mu}, \mat{\Lambda}) \quad ,
+\end{equation}
+then the product of the likelihood and this prior can be refactored into a product of
+two different Gaussians \citep{Hogg:2020},
+\begin{align}
+  p(\vec{y} \given \vec{\theta}, \vec{\beta}) \, p(\vec{\beta} \given \vec{\theta}) &=
+    \norm(\vec{y} \given \mat{X}\,\vec{\beta}, \mat{C})\,
+      \norm(\vec{\beta} \given \vec{\mu}, \mat{\Lambda}) \\
+  &= \norm(\vec{y} \given \mat{X}\,\vec{\mu},
+      \mat{C} + \mat{X}\,\mat{\Lambda}\,\transp{\mat{X}})\,
+    \norm(\vec{\beta} \given \vec{a}, \mat{A})
+  \label{eq:refactor} \\
+  \mat{A}^{-1} &= \mat{\Lambda}^{-1} + \transp{\mat{X}}\,\mat{C}^{-1}\,\mat{X} \\
+  \vec{a} &= \mat{A}\,(\mat{\Lambda}^{-1}\,\vec{\mu}
+    + \transp{\mat{X}}\,\mat{C}^{-1}\,\vec{y})
+  \quad .
+\end{align}
+The first term on the right-hand side of Equation~\ref{eq:refactor} only depends on the
+data and the nonlinear parameters -- this is the marginal likelihood of the data given
+the nonlinear parameters,
+\begin{equation}
+  p(\vec{y} \given \vec{\theta})
+    = \norm(\vec{y} \given \mat{X}\,\vec{\mu},
+      \mat{C} + \mat{X}\,\mat{\Lambda}\,\transp{\mat{X}})
+  \quad .
+  \label{eq:marginal-likelihood}
+\end{equation}
+The second factor is the \textit{posterior} pdf of the linear parameters conditioned on
+the nonlinear parameters, and it is a Gaussian with mean $\vec{a}$ and covariance
+$\mat{A}$.
+This is the marginalization that underlies \joker\ (see Appendix A of
+\citealt{Price-Whelan:2020}), but for \harv\ we have generalized the implementation to
+support additional columns in the design matrix (see
+Section~\ref{sec:design-extensions}), a nonzero prior mean vector $\vec{\mu}$, and a
+prior covariance matrix $\mat{\Lambda}$ that can depend on the nonlinear parameters
+$\vec{\theta}$.
+Also, $\mat{C}$ can be dense.
+In code, when $\mat{C}$ is diagonal, we do not construct the $N \times N$ covariance
+matrix in Equation~(\ref{eq:marginal-likelihood}) and we instead use the matrix
+inversion and determinant lemmas so the evaluation cost of the marginal likelihood
+scales as $N\,Q^2 + Q^3$.
+When $\mat{C}$ is dense (e.g., with a Gaussian process model component), the cost scales
+as $N^3$.
+
+The marginalization above requires that the prior pdf over each linear parameter is
+conjugate to the likelihood, which here means the prior pdf must be a normal
+distribution, or, new to \harv, a truncated normal distribution, or a mixture of these
+(see below).
+In code, if a user specifies a prior pdf for a linear parameter that is not
+fundamentally a normal distribution, then the linear parameter is sampled explicitly
+along with the nonlinear parameters.
+
 
 %--------------------------------------------------------------------
 \subsection{Rejection sampling}
