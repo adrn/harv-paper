@@ -1,5 +1,5 @@
 % TODO:
-% -
+% - A final check with Claude: did we say correct things about the code?
 
 \documentclass[twocolumn]{AASTeX7/aastex701}
 
@@ -197,9 +197,10 @@ appropriate.
 Many packages and methods have been developed to efficiently sample or fit Keplerian
 orbits to data.
 For example, for RV data (\texttt{RadVel} \citealt{Fulton:2018}; \texttt{juliet} \citealt{Espinoza:2019}), for astrometry and combinations of data (\texttt{orvara} \citealt{Brandt:2021}; \texttt{orbitize!} \citealt{Blunt:2020}; \texttt{Octofitter} \citealt{Thompson:2023}; \texttt{kima} \citealt{Faria:2018}; \texttt{Exo-Striker} \citealt{Trifonov:2019}; \texttt{exoplanet} \citealt{Foreman-Mackey:2021}), and for forward modeling \gaia\ epoch astrometry and the \dr{3} orbit-fitting pipeline (\texttt{gaiamock}, \citealt{El-Badry:2024}).
+\todo{check list and fix order}
 These are designed mainly to characterize individual systems in which a companion has
 been confidently detected, using MCMC or nested sampling.
-The goal of \harv\ is to enable population inference with large samples of sources.
+The goal of \harv\ is to enable population inferences with large samples of sources.
 
 \todo{Mention below the Orvara marginalizations and that we use the kepler solver}
 
@@ -208,12 +209,204 @@ The goal of \harv\ is to enable population inference with large samples of sourc
 \section{Software design}
 \label{sec:design}
 
-\todo{Write this.}
+\harv\ is designed to generate posterior samplings over the orbital parameters for
+two-body systems.
+Much of the design of \harv\ is guided by a common property of data for such systems:
+the model prediction for the observed data is a nonlinear function of some of the
+parameters and a linear function of the others.
+That is, for a source with $N$ measurements $\vec{y}$, the prediction can be written as
+\begin{equation}
+  \vec{y} = \mat{X}(\vec{\theta})\,\vec{\beta} + \mathrm{noise}
+\end{equation}
+where the $N \times Q$ design matrix $\mat{X}$ is, in general, a function of the
+nonlinear parameters $\vec{\theta}$ and $\vec{\beta}$ is a length-$Q$ vector of the
+linear parameters.
+Recognizing this structure means that, if we adopt conjugate priors for the linear
+parameters, we can optionally analytically marginalize over the linear parameters to
+reduce the dimensionality of the parameter space we need to sample over.
+We describe this marginalization in more detail in Section~\ref{sec:TODO}.
+
+\subsection{Parameterizations of the models}
+\label{sec:design-parameterizations}
+
+We have also designed \harv\ to be flexible in the parameterization of the models that
+predict the data.
+For example, for radial velocity data, the standard parameterization of the Keplerian
+model is
+\begin{equation}
+  v(t) = v_0 + K\,[\cos(\omega + f(t \,;\, P, e, \phi_0)) + e\,\cos\omega]
+  \quad ,
+  \label{eq:rv-model}
+\end{equation}
+where $v_0$ is the systemic velocity, $K$ is the velocity semi-amplitude, $e$ is the
+eccentricity, $\omega$ is the argument of pericenter, and the true anomaly $f$ depends
+on time $t$ with the period $P$, the eccentricity, and the orbital phase $f_0$.
+We specify the phase $f_0$ as the time of pericenter passage in units of the period,
+$f_0 = (t_{\rm peri} - t_{\rm ref}) / P$, relative to a reference time $t_{\rm ref}$.
+Of these parameters, four ($P$, $e$, $\omega$, $f_0$) are nonlinearly related to the
+prediction $v(t)$, and two ($K$, $v_0$) are linear.
+This is implemented in \harv\ as the \texttt{StandardRV} parameterization class.
+But we also support alternate parameterizations of the Keplerian model.
+For example, \harv\ supports a Fourier series representation of the Keplerian model,
+which is linear in all parameters (coefficients) except the period, and is implemented
+as the \texttt{FourierRV} parameterization class, among others.
+In the code, a parameterization is what specifies the names and units of the parameters
+of a model, which parameters are linear, how the design matrix is computed from the
+nonlinear parameters, and a default prior probability distribution functions (pdf) for
+all parameters.
+
+As another example, for \gaia\ epoch astrometry, the data are one-dimensional
+``along-scan'' positions of the source \citep{Lindegren:2012}, which are a projection of
+the two-dimensional sky position onto the scan direction of the satellite over time.
+We model the along-scan position $y_{\rm AL}$ at time $t$ as the sum of the standard
+five-parameter astrometric model and a Keplerian orbit of the photocenter
+\citep[e.g.,][]{Holl:2022}.
+In terms of the Thiele--Innes constants $(A, B, F, G)$ and the astrometric in-plane coordinates $(X, Y)$ of the orbit, the along-scan position is
+\begin{align}
+  y_{\rm AL}(t) =
+    &\left[\alpha_0 + \mu_\alpha\,\Delta t + B\,X + G\,Y\right] \, \sin\psi \nonumber \\
+    + &\left[\delta_0 + \mu_\delta\,\Delta t + A\,X + F\,Y\right] \, \cos\psi \nonumber \\
+    + &\varpi\,H_\varpi
+  \quad ,
+  \label{eq:al-model}
+\end{align}
+where $(\alpha_0, \delta_0)$ are offsets in position at the reference time,
+$(\mu_\alpha, \mu_\delta)$ are the proper motion components, $\varpi$ is the parallax,
+$\Delta t = t - t_{\rm ref}$, and $\psi$ and $H_\varpi$ are the scan angle and the
+along-scan parallax factor of the transit (provided as metadata).
+The orbit enters through the astrometric coordinates $X = \cos E - e$ and $Y = \sqrt{1 -
+e^2}\,\sin E$, where $E$ is the eccentric anomaly, and through the Thiele--Innes
+constants $(A, B, F, G)$, which include the angular semi-major axis of the photocenter
+orbit, $a_0$, multiplied by functions of $\omega$, the longitude of the ascending node
+$\Omega$, and the inclination $i$ (i.e. the orientation angles of the orbit).
+The five astrometric parameters are linearly related to the prediction.
+At fixed orientation of the orbit $(\omega, \Omega, i)$, the angular semi-major axis
+$a_0$ is also linear in the prediction.
+The prediction is also linear in the Thiele--Innes constants themselves.
+We therefore support both options: a parameterization class that uses the Thiele--Innes
+constants as linear parameters, \texttt{ThieleInnesGaiaAstrometry}, and a
+parameterization class that uses the orientation angles and angular semi-major axis as
+nonlinear parameters, \texttt{StandardGaiaAstrometry}.
+Our conventions for the orientation of the orbit, which are chosen so that the same
+($\omega$, $\Omega$, $i$) describe RV data and astrometry consistently for the star, are
+given in Appendix~\todo{which}.
+
+The parameterization classes determine what parameters are considered linear and
+nonlinear, and how the model prediction is computed for a given set of parameters.
+Table~\ref{tab:parameterizations} lists the parameterizations that are currently
+implemented.
+It is then up to the user to choose prior pdfs for
+the parameters, which then determine whether the linear parameters can be marginalized
+over or not, and to choose the inference method (rejection sampling, MCMC, etc.) to use
+for posterior sampling.
+This design is flexible and customizable and allows for a separation of concerns in
+\harv: the user can define a custom parameterization class for a given data format that
+implements the model prediction for the data, and then use the rest of the machinery to
+set prior pdfs, marginalize (or not) over the linear parameters, and run inference to
+generate posterior samples.
+
+\begin{table*}
+  \centering
+  \caption{
+    The parameterizations implemented in \harv, with their nonlinear and linear
+    parameters.
+    For the Fourier parameterizations, the number of Fourier terms is user-defined, so
+    the number of linear coefficients $a_k$ and $b_k$ depend on the number of terms.
+    \label{tab:parameterizations}
+  }
+  \begin{tabular}{lll}
+    \hline
+    Parameterization & Nonlinear parameters & Linear parameters \\
+    \hline
+    \multicolumn{3}{l}{\textit{Radial velocities}} \\
+    \texttt{StandardRV} &
+      $P$, $e$, $f_0$, $\omega$ &
+      $K$, $v_0$ \\
+    \texttt{SqrtEccRV} &
+      $P$, $\sqrt{e}\cos\omega$, $\sqrt{e}\sin\omega$, \todo{phase} &
+      $K$, $v_0$ \\
+    \texttt{FourierRV} &
+      $P$ &
+      $v_0$, $a_k$, $b_k$ \\
+    \multicolumn{3}{l}{\textit{\gaia\ epoch astrometry}} \\
+    \texttt{StandardGaiaAstrometry} &
+      $P$, $e$, $f_0$, $\omega$, $\Omega$, $\cos i$ &
+      $\alpha_0$, $\delta_0$, $\mu_\alpha$, $\mu_\delta$, $\varpi$, $a_0$ \\
+    \texttt{ThieleInnesGaiaAstrometry} &
+      $P$, $e$, $f_0$ &
+      $\alpha_0$, $\delta_0$, $\mu_\alpha$, $\mu_\delta$, $\varpi$, $A$, $B$, $F$,
+      $G$ \\
+    \texttt{FourierGaiaAstrometry} &
+      $P$ &
+      $\alpha_0$, $\delta_0$, $\mu_\alpha$, $\mu_\delta$, $\varpi$, $a_k$, $b_k$ \\
+    \hline
+  \end{tabular}
+\end{table*}
+
+
+\subsection{Assumptions}
+\label{sec:design-assumptions}
+
+As with any statistical model, we make a number of assumptions in \harv\ about the data
+and the underlying physical systems we are modeling.
+For this version of \harv, we assume:
+\begin{itemize}
+  \item that each source has exactly one companion and that the motion is well described by the two-body problem,
+  \item that the measurement times are known and specified in a barycentric reference frame,
+  \item and that the noise is Gaussian with known variances, possibly inflated by additional parameters (see below).
+\end{itemize}
+For astrometry, we additionally assume that the measured position is that of the
+photocenter of the system.
+We return to these assumptions in Section~\ref{sec:discussion}.
+
+\subsection{Model extensions}
+\label{sec:design-extensions}
+
+The above assumptions are often violated in practice.
+For example, many stars have more than one companion, and some of these cases are
+hierarchical systems with an inner (short-period) companion and an outer (long-period)
+companion.
+Or, the noise may not be Gaussian: there may be correlated noise (instrumental or
+astrophysical) in the data, or systematic offsets between instruments, or the noise may
+be underestimated.
+\harv\ supports extending the base models with additional components and parameters to
+account for these effects.
+
+As they are currently implemented, extensions can be one of two kinds: (1) extensions
+that add columns to the design matrix (i.e., add linear parameters), or (2) extensions
+that modify the noise covariance matrix of the data.
+Examples of the first kind of extension include a constant velocity offset for each
+instrument when the data come from RV programs with different calibrations, or a
+polynomial trend in time to absorb the acceleration from a long-period companion.
+These are linear in the model prediction and the parameters can be optionally
+marginalized over, like the other linear parameters of the Keplerian part of the model.
+Examples of the second kind of extension are either an extra ``jitter'' or ``excess
+variance'' term that is added to the variance of each measurement, or a Gaussian process
+(GP) model for correlated noise in the data.
+We currently support GP models via the \package{tinygp} package \citep{TODO}, which is
+also built on \jax.
+For both a jitter term and a GP model, the extra parameters of the noise model are
+nonlinear in the model prediction and cannot be analytically marginalized over.
+
+\subsection{Implementation details}
+\label{sec:design-implementation}
+
+\harv\ models are built on \jax\ \citep{Bradbury:2018}.
+In a break from many packages in the \jax\ ecosystem, we require that all arrays and calculations are done in double precision (\texttt{float64}).
+We use \package{numpyro} \citep{Phan:2019} to represent and reason about prior pdfs and
+to run MCMC or other inference methods, \package{equinox} \citep{Kidger:2021} as ...
+pytree dataclasses...., and \package{unxt} \citep{Starkman:TODO} so that data,
+parameters, priors, and samples carry physical units.
+When needed, we compute the eccentric anomaly with a port of the Kepler solver from
+\package{orvara} (\citealt{Brandt:2021}; see also \citep{Raposo-Pulido:2017}).
+The log-probability of a model is a pure function of the parameter values and can be
+extracted from the \package{numpyro} model, so it can also be passed to other libraries
+in the \jax\ ecosystem; we show an example of this in Section~\ref{sec:cases-interop}.
 
 
 %--------------------------------------------------------------------
-\section{Inference}
-\label{sec:inference}
+\section{Methods}
+\label{sec:methods}
 
 \todo{Write this.}
 
