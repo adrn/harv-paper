@@ -1,5 +1,6 @@
 % TODO:
 % - A final check with Claude: did we say correct things about the code?
+% - Check that we use siunitx \unit{} for units throughout.
 
 \documentclass[twocolumn]{AASTeX7/aastex701}
 
@@ -806,6 +807,11 @@ To make this possible without re-evaluating the prior, \harv\ can also optionall
 the value of the interim prior pdf, $\ln p(\vec{\theta}_j)$, at each of the returned
 samples.
 
+\subsection{Performance}
+\label{sec:methods-performance}
+
+\todo{Benchmarks against thejoker}
+
 
 %--------------------------------------------------------------------
 \section{Case studies}
@@ -818,16 +824,178 @@ These are demonstrations of the methods and we do not consider the results for t
 individual systems to be new astrophysical results.
 The first four case studies use published data, and the last case study uses simulated
 data so that the true population parameters are known.
-Each case study is reproduced by a script in the repository that accompanies this
-article, using version \todo{0.x} of \harv.
+Each case study is reproduced by a script or Jupyter notebook in the repository that
+accompanies this article, using version \todo{0.x} of \harv.
 
 %--------------------------------------------------------------------
 \subsection{
-  Case study 1: Sparse APOGEE radial velocities for binary-star systems
+  Case study 1: APOGEE radial velocities for binary-star systems
 }
 \label{sec:cases-apogee}
 
-\todo{Write this.}
+This first case study demonstrates the basic functionality of \harv\ and shows the
+typical pipeline for analyzing a small sample of stars that may have varied data
+quality and time sampling.
+For this example, we use visit-level radial velocity (RV) measurements from
+\apogee\ \dr{17} \citep{Majewski:2017, Abdurrouf:2022} for a few handpicked sources that
+have a range of numbers of visits.
+We select six sources: two with 3 visits, two with 6 visits, and two with around 12
+visits (Table~\ref{tab:apogee}).
+For each pair of sources (per number of visits), one has large RV scatter (an obvious
+binary) and one has small RV scatter (unclear).
+
+We use the standard RV parameterization and a prior pdf that is similar to the prior we
+used previously to analyze \apogee\ data with \joker\ \citep{Price-Whelan:2020}.
+This prior is uniform in $\ln P$ between 2 and 16{,}384~days, a truncated normal
+distribution for the eccentricity with mean 0.5 and standard deviation 0.25 (truncated
+to $[0, 1)$), and uniform distributions for the angles and phases $\omega$ and $f_0$.
+For the linear parameters, we use the period-dependent prior scale for the velocity
+semi-amplitude $K$ (Equation~\ref{eq:sigma-K}) with $\sigma_{K,0} = 30~{\rm km~s}^{-1}$,
+$P_0 = 1~{\rm yr}$, and a normal prior for the systemic velocity $v_0$ with standard
+deviation $\sigma_{v_0} = 150~{\rm km~s}^{-1}$.
+We do not include a jitter parameter here, and we discuss the visit velocity
+uncertainties below.
+
+We first generate $J = 10^7$ prior samples, and then use the same prior samples for all
+stars.
+For each source, we run the rejection sampling with these prior samples, and request the
+evidence estimate and the diagnostics described in Section~\ref{sec:methods-rejection}:
+\begin{verbatim}
+samples = sampler.run_with_samples(
+    data, prior_samples, key=key,
+    return_evidence_stats=True)
+\end{verbatim}
+\noindent
+Figures~\ref{fig:apogee-large} and~\ref{fig:apogee-small} show the data and the returned
+samples for the six sources, and Table~\ref{tab:apogee} summarizes the results from this
+analysis.
+All three outcomes of the rejection sampling (Section~\ref{sec:methods-rejection})
+appear among these six sources.
+For the three sources with small RV scatter, many samples survive in all cases.
+The samples cover most of the prior at long periods (mostly $P \gtrsim 100$~d with 3
+visits and $\gtrsim 1000$~d with 6, but that is likely more a statement about the
+time baseline of the data in each case).
+For the three sources with large RV scatter, the final outcome depends on the number of
+visits: For the source with 3 visits, many samples survive and nearly all have periods
+below $\lesssim100~\unit{day}$ but they are spread over many period modes.
+For the source with 6 visits, only 2 samples survive and they sit in different period
+modes (the baseline is long so the period resolution is high), so more prior samples are
+needed to resolve these modes (or use a different sampling method).
+For the source with 13 visits, a single sample survives, and we continue sampling with
+MCMC.
+
+\begin{figure*}
+  \centering
+  \includegraphics[width=\textwidth]{figures/cs1-large-scatter.pdf}
+  \caption{
+    \todo{Update caption}
+    Data and posterior samples for the three \apogee\ sources with large RV scatter,
+    ordered by the number of visits (top to bottom).
+    For each source (row), the left panel shows the visit velocities (black points) with
+    orbits computed from up to 128 posterior samples (blue lines), and the right panel
+    shows a larger set of posterior samples in period and eccentricity.
+    The inset box in the left panel shows the number of visits and the log Bayes factor
+    $\ln\mathcal{B}$ for the companion model relative to a constant-velocity model.
+    The samples are from the rejection sampling, except for 2M20183197+1953430, where we
+    continue sampling with MCMC.
+    Note that the middle panel for 2M15035796-4533457 has only 2 rejection samples
+    returned.
+    \label{fig:apogee-large}
+  }
+\end{figure*}
+
+\begin{figure*}
+  \centering
+  \includegraphics[width=\textwidth]{figures/cs1-small-scatter.pdf}
+  \caption{
+    \todo{Update caption}
+    Same as Figure~\ref{fig:apogee-large}, but for the three sources with small RV
+    scatter. All samples are from the rejection sampling.
+    \label{fig:apogee-small}
+  }
+\end{figure*}
+
+\begin{table*}
+  \centering
+  \caption{
+    Results for the six \apogee\ sources, using the same $J = 10^7$ prior
+    samples.
+    $N$ is the number of visits, $T$ is the time spanned by the visits, $M$ is the
+    number of samples that survive the rejection step, $J_{\rm eff}$ is the effective
+    sample size, $w_{\rm max}$ is the largest importance weight
+    (Equation~\ref{eq:weights}), and $\ln\mathcal{B}$ is the log Bayes factor of the
+    companion model relative to a constant-velocity model.
+    \label{tab:apogee}
+  }
+  \begin{tabular}{lrrrrrl}
+    \hline
+                 &        &          & Number of           & Effective     & Log Bayes        & Sampling \\
+     \apogee\ ID & Visits & Baseline & Rejection samples   & sample size   & factor           & outcome  \\
+                 & $N$    & $T$ [d]  & $M$                 & $J_{\rm eff}$ & $\ln\mathcal{B}$ &          \\
+    % \apogee\ ID & Num. visits & Baseline & Num. Rejection Samples & Effective sample size & Bayes factor &
+    % Sampling outcome \\
+    % & $N$ & $T$ [d] & $M$ & $J_{\rm eff}$ &  $\ln\mathcal{B}$ & \\
+    \hline
+    \input{tables/cs1-apogee-output.tex}
+    \\
+    \hline
+  \end{tabular}
+\end{table*}
+
+Table~\ref{tab:apogee} shows some numerical takeaways from the rejection sampling.
+For the two sources with $N=3$ visits, the number of samples returned and the effective
+sample size are large --- the data are fairly uninformative, and the posterior pdf is
+broad and multimodal.
+However, note that the source with large scatter (2M15323868+4218297) has a much larger
+Bayes factor than the source with small scatter (2M02323271+3350542), which suggests
+that the companion model is preferred for the former and is marginal for the latter.
+
+For the two sources with $N=6$ visits, the source with small scatter
+(2M22122067+4152581) also has many samples returned and a large effective sample size,
+and a marginal Bayes factor.
+The source with large scatter (2M15035796-4533457) has only two samples returned in
+different period modes, and the effective sample size is small, which suggests that the
+posterior pdf is multimodal and that more prior samples are needed to resolve the modes.
+The Bayes factor is large, which suggests that the companion model is preferred, but the
+evidence estimate is unreliable because of the small effective sample size.
+
+For the two sources with $N \approx 12$ visits, the source with small scatter
+(2M16022747+2902099) has many samples returned and a large effective sample size, but
+the Bayes factor is moderately large, suggesting that the companion model is preferred
+even if the orbital parameters are not well constrained.
+The source with large scatter (2M20183197+1953430) has only one sample returned, which
+passes the unimodal check, so we continue sampling with MCMC.
+For this case, we initialize a No-U-Turn Sampler \citep{TODO} implemented in
+\texttt{numpyro} using the rejection sample(s):
+\begin{verbatim}
+if samples.period_unimodal(data):
+    mcmc = harv.NumpyroSampler(prior, model)
+    samples = mcmc.run(
+        data, init_samples=samples, key=key)
+\end{verbatim}
+\noindent
+We run 4 chains, run for 1000 initial warm-up steps, and then run for 2000 steps.
+At the end of the sampling, all parameters have $\hat{R} < \todo{1.01}$.
+
+Because we do not include a jitter parameter or other noise model, both the companion
+model and the constant-velocity model (used for the evidence and Bayes factor estimates)
+assume that any scatter in the velocities that cannot be explained by the
+constant-velocity model comes from a companion.
+The \apogee\ catalog uncertainties are known to be underestimated
+\citep[e.g.,][]{Cottaar:2014, Badenes:2018, Price-Whelan:2020}, so for all of the
+results above we have used the re-calibrated visit uncertainties from
+\citet{Price-Whelan:2020}.
+If we instead use the APOGEE catalog uncertainties, the log Bayes factor for the
+marginal sources would likely be higher.
+Instead of re-calibrating the uncertainties, another way to handle this would be to add
+a jitter parameter for each source and marginalize over its value.
+We do not recommend this for large samples because it will limit the detection
+efficiency of low-amplitude companions, and it makes the rejection sampling less
+efficient (it adds another nonlinear parameter that must be sampled explicitly).
+A better approach is to instead first calibrate the uncertainties with an independent
+model fit to the catalog as a whole, and then use the calibrated uncertainties for the
+per-source inferences, as we have done in \citet{Price-Whelan:2020}.
+
 
 %--------------------------------------------------------------------
 \subsection{
