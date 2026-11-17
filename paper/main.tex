@@ -1023,19 +1023,135 @@ per-source inferences, as we have done in \citet{Price-Whelan:2020}.
 }
 \label{sec:cases-gaia4}
 
-\todo{Write this.}
+The second case study demonstrates how to use \harv\ to model a source with both radial
+velocity and astrometric data, and with very informative data that precisely constrain
+the orbital parameters.
+Gaia-4b is a super-Jupiter planet with a $P\approx 570~\unit{day}$ orbit around a nearby
+K dwarf star.
+The planet was initially identified as a candidate from its astrometric orbit in \gaia\
+\dr{3} and it was confirmed with RVs \citep{Stefansson:2025}.
+This source was included in the \gaia\ \dr{4} pre-release, so we have access to the
+epoch astrometry data as a representative example of the data that will be available in
+\gaia\ \dr{4}.
+From the \gaia\ \dr{4} pre-release, we have 93 field-of-view transit measurements of
+this source, which we combine with 23 RVs from three spectrographs (10 from HPF, 8 from
+NEID, and 5 from FIES; \citealt{Stefansson:2025}) to jointly model the properties of the
+planet.
+We note that, while preparing this manuscript, \citet{Kanodia:2026} also published a
+joint analysis of the Gaia-4 system using the same data, so we compare our results to
+theirs below.
+This case study demonstrates how we can use rejection sampling to locate a mode in an
+unbiased way before running MCMC, and it demonstrates how to set up and use a joint
+model for the RVs and astrometry.
+
+We start with the astrometry alone, and we use the rejection sampler.
+We use the standard parameterization for the astrometric model, with a prior pdf that
+is uniform in $\ln P$ between 10 and $2000~\unit{day}$ and the default prior pdfs for
+the other nonlinear parameters.
+We adopt Gaussian prior pdfs for the linear parameters in which the reference position
+has a scale of $100~\unit{mas}$, and the proper motion components and the angular
+semi-major axis of the photocenter orbit have parallax-dependent scales, set by a
+tangential velocity scale of $100~\unit{km.s^{-1}}$ and by $\sigma_{a,0} = 1~\unit{au}$
+(Equation~\ref{eq:sigma-a}), respectively.
+Because these prior pdfs depend on the parallax, the parallax is sampled explicitly
+rather than marginalized.
+We use the catalog parallax to set the prior on parallax under the assumption that the
+exoplanet signal is small compared to the astrometric signal of the star's apparent
+motion --- here, the parallax prior is set to a normal distribution centered on
+$13.643~\unit{mas}$ with a width of $1~\unit{mas}$, which is broad compared to the size
+of the orbit and the catalog parallax uncertainty.
+We also include an astrometric jitter parameter, with a half-normal prior pdf with a
+scale of $0.1~\unit{mas}$.
+With these choices, we generate $J = 10^7$ prior samples and run the rejection sampling.
+Only one sample survives the rejection step, with a period of $P \approx
+574~\unit{day}$.
+
+We continue with standard MCMC (NUTS), as above.
+We first use the returned sample to initialize an optimizer to find the nearby maximum
+of the posterior pdf mode that the sample is in, which shifts the MCMC initialization to
+$P = 578.3~\unit{day}$.
+We then run NUTS starting from this optimized location with 4 chains, starting with 1000
+steps of warm-up and then 2000 steps of sampling.
+From modeling the astrometry alone, we infer $P = \todo{577.7 \pm 3.7}$~days and $e =
+\todo{0.39 \pm 0.08}$ (Table~\ref{tab:gaia4}).
+
+We then incorporate RV data into the model.
+The joint model shares the orbital parameters between the two representations (RV and
+astrometry).
+Because the companion is unseen, the velocity semi-amplitude is tied to the astrometric
+orbit:
+\begin{verbatim}
+joint_model = harv.JointModel.for_rv_and_gaia(
+    components={"rv": rv_model,
+                "astrom": astrom_model})
+\end{verbatim}
+\noindent
+The RV model here includes two new parameters that represent the velocity offset for HPF
+and NEID relative to FIES, which are linear parameters and are marginalized, along with
+a jitter parameter shared by all three instruments:
+\begin{verbatim}
+rv, indicator, names = rv_data.indicator_data_by_type(
+    harv.RVData, reference="FIES")
+rv_model = harv.RVModel(extensions=(
+    harv.Jitter(obs_unit="m/s"),
+    harv.MultiSurveyOffset(indicator, names, "m/s")))
+\end{verbatim}
+\noindent
+The astrometry alone cannot distinguish the orbit from a mirrored orbit in which
+($\omega \to \omega + \pi$, $\Omega \to \Omega + \pi$), so we first optimize the joint
+posterior pdf starting from both, and initialize the MCMC at the one with the larger
+posterior probability --- the two optima have a difference of $\Delta \ln p \approx 82$,
+so the RV data clearly break this degeneracy.
+
+\begin{figure*}
+  \centering
+  \includegraphics[width=\textwidth]{figures/gaia4-joint.pdf}
+  \caption{
+    Results from the joint model for Gaia-4. \textit{Left:} the \gaia\ \dr{4} along-scan
+    positions after subtracting the five-parameter (sky position, proper motion, and
+    parallax) astrometric solution of the best-fit model. The data are shown as a
+    function of orbital phase (black points), and the predictions from the model are
+    shown at the same epochs (green open markers).
+    \textit{Middle:} The orbit of the photocenter on the sky for 128 posterior samples.
+    \textit{Right:} The RVs from the three instruments, corrected with the inferred (median) offset values, and the model predictions for 128 posterior samples.
+    \label{fig:gaia4}
+  }
+\end{figure*}
+
+\begin{table*}
+  \centering
+  \caption{
+    Posterior constraints for Gaia-4b from the astrometry alone and from the joint
+    model (median and 68\% interval), compared with published values.
+    The companion mass assumes a stellar mass of $0.644~{\rm M}_\odot$
+    \citep{Stefansson:2025}.
+    \label{tab:gaia4}
+  }
+  \begin{tabular}{lcccc}
+    \hline
+    Parameter & Astrometry only & Joint model & \citet{Kanodia:2026} &
+      \citet{Stefansson:2025} \\
+    \hline
+    \input{tables/cs2-gaia4-joint.tex}
+    \\
+    \hline
+  \end{tabular}
+\end{table*}
+
+Figure~\ref{fig:gaia4} shows the data and some predictions from the joint model.
+Table~\ref{tab:gaia4} summaries the results and compares our inferred parameter values
+with previous work.
+We infer offsets of HPF and NEID relative to FIES of $-115 \pm 15$ and
+$-99 \pm 15~\unit{m.s^{-1}}$, respectively, which are consistent with the (amplitude)
+$\approx 100~\unit{m.s^{-1}}$ offsets found by \citet{Kanodia:2026} for these
+instruments.
+We infer a planet mass of $10.84 \pm 0.35~{\rm M_J}$, which is also consistent with the
+recent analysis \citep{Kanodia:2026}, $10.70 \pm 0.32~{\rm M_J}$, who use the same
+\gaia\ pre-release data but more RV measurements.
 
 %--------------------------------------------------------------------
 \subsection{
-  Case study 3: Modeling HD 285968 with a Gaussian process to capture stellar activity
-}
-\label{sec:cases-hd285968}
-
-\todo{Write this.}
-
-%--------------------------------------------------------------------
-\subsection{
-  Case study 4: Connecting \harv\ with other inference tools
+  Case study 3: Connecting \harv\ with other inference tools
 }
 \label{sec:cases-interop}
 
@@ -1043,7 +1159,7 @@ per-source inferences, as we have done in \citet{Price-Whelan:2020}.
 
 %-------------------------------------------------------------------
 \subsection{
-  Case study 5: Population inference with simulated data
+  Case study 4: Population inference with simulated data
 }
 \label{sec:cases-pop-inf}
 
@@ -1091,9 +1207,18 @@ per-source inferences, as we have done in \citet{Price-Whelan:2020}.
 % \facilities{Gaia, Sloan (APOGEE), ESO:3.6m (HARPS), HET (HPF), WIYN (NEID), NOT (FIES)}
 
 % TODO: software
-% \software{harv, JAX, numpyro, equinox, unxt, quax, tinygp,
+% \software{harv, JAX, numpyro, equinox, unxt, quax, tinygp, Jupyter
 %           astropy, arviz, h5py, matplotlib, numpy, scipy, thejoker
 %           }
+
+\appendix
+
+\section{TODO}
+
+\section{Performance benchmarks}
+\label{sec:appendix-performance}
+
+\todo{Benchmark against thejoker. Also can we benchmark against MCMC for time to N uncorrelated samples as a function of number of visits and SNR?}
 
 \bibliographystyle{AASTeX7/aasjournalv7}
 \bibliography{refs}{}
