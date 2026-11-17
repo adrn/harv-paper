@@ -957,8 +957,27 @@ and a marginal Bayes factor.
 The source with large scatter (2M15035796-4533457) has only two samples returned in
 different period modes, and the effective sample size is small, which suggests that the
 posterior pdf is multimodal and that more prior samples are needed to resolve the modes.
-The Bayes factor is large, which suggests that the companion model is preferred, but the
-evidence estimate is unreliable because of the small effective sample size.
+The evidence estimate is therefore unreliable, but the Bayes factor is so large
+($\ln\mathcal{B} \approx 5.5\times10^4$) that the companion model is strongly preferred
+even allowing for a large error in the estimate.
+There are several possible paths forward for cases like this.
+The simplest path is to rerun the rejection sampler with even more prior samples: the
+ratio $J_{\rm eff}/J \approx 2\times10^{-7}$ implies that of order $10^9$ prior samples
+are needed to return a few hundred posterior samples.
+\harv\ also includes an experimental option to build a period prior for each source
+from the periodogram of its data.
+This prior concentrates the prior samples near the periodogram peaks but keeps a
+log-uniform component, so that the prior pdf is nonzero over the full period range.
+The posterior pdf under the original prior can then be recovered by reweighting the
+returned samples by the ratio of the original prior pdf to the periodogram-based prior
+pdf.
+However, these samples cannot trivially be used for population modeling.
+The interim prior differs from source to source, so it cannot be ignored and must be
+divided out sample by sample in Equation~\ref{eq:reweight}.
+The reweighted samples may also be sparse wherever the population prior puts mass far
+from the periodogram peaks.
+Finally, the evidence returned by such a run is with respect to the periodogram-based
+prior, not the original prior, so we cannot use it directly to compute the Bayes factor.
 
 For the two sources with $N \approx 12$ visits, the source with small scatter
 (2M16022747+2902099) has many samples returned and a large effective sample size, but
