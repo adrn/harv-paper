@@ -188,8 +188,9 @@ prohibitive for the current \joker\ implementation.
 
 Here we present \harv: a successor to \joker\ and full re-implementation built on \jax\
 \citep{Bradburg:2018} and \package{numpyro} \citep{Phan:2019}.
-\harv\ is faster and more flexible than the original \joker\ implementation, and works
-with both RVs and \gaia\ epoch astrometry (with support for more data types to come).
+\harv\ is faster (see Appendix~\ref{sec:appendix-performance}) and more flexible than
+the original \joker\ implementation, and works with both RVs and \gaia\ epoch astrometry
+(with support for more data types to come).
 Because it is built on \jax, the same model code can be compiled and run on CPUs or
 GPUs, and is differentiable, so can be used in gradient-based MCMC samplers or
 variational inference methods instead of the built-in rejection sampler, when
@@ -807,10 +808,41 @@ To make this possible without re-evaluating the prior, \harv\ can also optionall
 the value of the interim prior pdf, $\ln p(\vec{\theta}_j)$, at each of the returned
 samples.
 
-\subsection{Performance}
-\label{sec:methods-performance}
 
-\todo{Benchmarks against thejoker}
+\subsection{Using \harv\ models with other tools}
+\label{sec:methods-interop}
+
+For a given prior pdf and data set, \harv\ can construct a \package{numpyro} model such
+that the parameters are sampled from the prior pdf and the marginal likelihood
+(Equation~\ref{eq:marginal-likelihood}) enters as a factor in the model.
+This is the model that the MCMC sampler in \harv\ runs.
+This can also be used with any other inference method in \package{numpyro} (e.g.,
+variational inference), or even with other libraries that can use \jax\ functions.
+For example, \package{numpyro} enables extracting a function that evaluates the log
+density (and components) of a model, which can be passed as \jax\ functions to samplers
+in other libraries.
+We use this in Section~\ref{sec:cases-interop} to compute the evidence for some of the
+sources in Section~\ref{sec:cases-apogee} with a nested sampler from \package{blackjax}
+\citep{Cabezas:2024}.
+
+We can also use the marginal log-likelihood function itself for data formats that \harv\
+supports within a larger or separate model to handle additional data or parameters.
+For example, imagine that we have RV and light curve data for a system where the
+companion also transits the host star.
+The transit light curve depends on period, eccentricity, argument of pericenter, and
+phase (as do the RVs), along with parameters that do not appear directly in the RV model
+(the inclination or impact parameter, the radius ratio, and the limb darkening).
+In this case, we could use \package{jaxoplanet} \citep{Hattori:TODO} to compute the
+transit light curve and its log likelihood, and then use \harv\ to compute the marginal
+log likelihood of the RVs.
+We could then construct a joint model that samples the shared orbital parameters and the
+additional transit parameters, and adds the log likelihoods of the two data sets.
+However, for this example, transit data constrains the period and phase far more tightly
+than a few RVs would, so rejection sampling from a broad prior pdf would be very
+inefficient for such a model, and it would be better to instead initialize MCMC from a
+fit to the light curve data alone.
+We do not demonstrate this here, but mention it only as a possibility given the
+flexibility of tools built on \jax\ and \package{numpyro}.
 
 
 %--------------------------------------------------------------------
