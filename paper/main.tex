@@ -213,8 +213,6 @@ These are designed mainly to characterize individual systems in which a companio
 been confidently detected, using MCMC or nested sampling.
 The goal of \harv\ is to enable population inferences with large samples of sources.
 
-\todo{Mention below the Orvara marginalizations and that we use the kepler solver}
-
 
 %--------------------------------------------------------------------
 \section{Software design}
@@ -944,7 +942,6 @@ MCMC.
   \centering
   \includegraphics[width=\textwidth]{figures/cs1-small-scatter.pdf}
   \caption{
-    \todo{Update caption}
     Same as Figure~\ref{fig:apogee-large}, but for the three sources with small RV
     scatter. All samples are from the rejection sampling.
     \label{fig:apogee-small}
@@ -1030,7 +1027,7 @@ if samples.period_unimodal(data):
 \end{verbatim}
 \noindent
 We run 4 chains, run for 1000 initial warm-up steps, and then run for 2000 steps.
-At the end of the sampling, all parameters have $\hat{R} < \todo{1.01}$.
+At the end of the sampling, all parameters have $\hat{R} < 1.01$.
 
 Because we do not include a jitter parameter or other noise model, both the companion
 model and the constant-velocity model (used for the evidence and Bayes factor estimates)
@@ -1107,8 +1104,8 @@ of the posterior pdf mode that the sample is in, which shifts the MCMC initializ
 $P = 578.3~\unit{day}$.
 We then run NUTS starting from this optimized location with 4 chains, starting with 1000
 steps of warm-up and then 2000 steps of sampling.
-From modeling the astrometry alone, we infer $P = \todo{577.7 \pm 3.7}$~days and $e =
-\todo{0.39 \pm 0.08}$ (Table~\ref{tab:gaia4}).
+From modeling the astrometry alone, we infer $P = 577.7 \pm 3.7$~days and $e =
+0.39 \pm 0.08$ (Table~\ref{tab:gaia4}).
 
 We then incorporate RV data into the model.
 The joint model shares the orbital parameters between the two representations (RV and
