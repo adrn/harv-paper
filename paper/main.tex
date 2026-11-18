@@ -1069,8 +1069,6 @@ samples = sampler.run(data, key=key,
     return_evidence_stats=True)
 \end{verbatim}
 \noindent
-\todo{After rerunning the notebook: with $10^8$ prior samples, $M$ sample(s) survive at
-$P \approx$ XX~d, and $\ln G_{\rm max}$ rises from $-312.4$ to XX.}
 With $10^8$ prior samples, the best sample has $ln G_{\rm max} = -115.7$ and a period $P
 = 51.29~\unit{day}$.
 At this point, still only one sample survives, so we continue sampling with MCMC.
@@ -1084,9 +1082,9 @@ if samples.period_unimodal(data):
 \end{verbatim}
 \noindent
 We run 4 chains, run for 1000 initial warm-up steps, and then run for 2000 steps.
-At the end of the sampling, all parameters have $\hat{R} < \todo{1.01}$.
-At the MAP sample, $P = \todo{51.29}~\unit{day}$ and $\chi^2 \approx 3$ for 13 visits
-(7 degrees of freedom), which is a good fit given the calibrated uncertainties.
+At the end of the sampling, all parameters have $\hat{R} < 1.01$.
+At the MAP sample, $P = 51.29~\unit{day}$ and $\chi^2 \approx 3$ for 13 visits (7
+degrees of freedom), which is a good fit given the calibrated uncertainties.
 In this case, things seem to have worked out well, but the checks were important.
 If we had continued with MCMC from the single sample from the first run with $10^7$
 prior samples, all chains would have converged within a peak at $P = 55.21~\unit{day}$
