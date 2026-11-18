@@ -1025,9 +1025,9 @@ and a marginal Bayes factor.
 The source with large scatter (2M15035796-4533457) has only two samples returned with
 $10^7$ prior samples, in different period modes, so we rerun the rejection sampler with
 $10^8$ new prior samples.
-With $10^7$ prior samples, the best sample has $ln G_{\rm max} = -21.4$ and the two
+With $10^7$ prior samples, the best sample has $\ln G_{\rm max} = -21.4$ and the two
 samples have periods around 33 days.
-With $10^8$ prior samples, the best sample has $ln G_{\rm max} = -11.9$ and, again two
+With $10^8$ prior samples, the best sample has $\ln G_{\rm max} = -11.9$ and, again two
 samples are returned, but now with periods around 17 days.
 Even with $10^8$ prior samples, the effective sample size is small, and the samples are
 still sparse, which means that even more prior samples are needed to resolve the modes.
@@ -1061,7 +1061,7 @@ For the two sources with $N \approx 12$ visits, the source with small scatter
 the Bayes factor is moderately large, suggesting that the companion model is preferred
 even if the orbital parameters are not well constrained.
 The source with large scatter (2M20183197+1953430) has only one sample returned with
-$10^7$ prior samples, at $P = 55.24~\unit{day}$ with $ln G_{\rm max} = -312.4$, so we
+$10^7$ prior samples, at $P = 55.24~\unit{day}$ with $\ln G_{\rm max} = -312.4$, so we
 rerun the rejection sampling with $10^8$ new prior samples:
 \begin{verbatim}
 samples = sampler.run(data, key=key,
@@ -1069,7 +1069,7 @@ samples = sampler.run(data, key=key,
     return_evidence_stats=True)
 \end{verbatim}
 \noindent
-With $10^8$ prior samples, the best sample has $ln G_{\rm max} = -115.7$ and a period $P
+With $10^8$ prior samples, the best sample has $\ln G_{\rm max} = -115.7$ and a period $P
 = 51.29~\unit{day}$.
 At this point, still only one sample survives, so we continue sampling with MCMC.
 For this case, we initialize a No-U-Turn Sampler \citep{TODO} implemented in
