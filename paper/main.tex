@@ -1,6 +1,7 @@
 % TODO:
 % - A final check with Claude: did we say correct things about the code?
 % - Check that we use siunitx \unit{} for units throughout.
+% - Passive voice like: "...the source with small scatter ... also has many samples returned..."
 
 \documentclass[twocolumn]{AASTeX7/aastex701}
 
@@ -720,6 +721,40 @@ large enough.
 
 
 \subsubsection{Validating the maximum marginal likelihood, $G_{\rm max}$}
+\label{sec:methods-gmax}
+
+When only a few samples survive the rejection step, $G_{\rm max}$ (the threshold used in
+the rejection sampling) is the largest marginal likelihood of the prior samples, but it
+can still be much smaller than the height of the highest peak of the marginal
+likelihood.
+Posterior samples that are returned in this regime may therefore not be representative
+of the true posterior pdf, and may not even be in the dominant mode.
+This commonly happens when the data are informative and has a large time baseline, which
+leads to a highly structured posterior pdf with many narrow modes.
+In many such instances, even with a large number of prior samples, the rejection
+sampling might return one or just a few samples.
+If one then initializes MCMC from these samples, the chains will usually stay in that
+mode, and the standard convergence diagnostics (e.g., $\hat{R}$) will not reveal any
+issues, because all of the chains start in the same mode.
+
+We recommend two diagnostic checks if the rejection sampling returns one or only a few
+samples even when the number of prior samples $J$ is large.
+First, rerun the rejection sampling with even more prior samples (e.g., $10J$): if
+$G_{\rm max}$ rises substantially, or the returned samples move to a different mode, the
+first run had not located the dominant mode, and you should use the larger run (or run
+with even more prior samples!).
+Second, after continuing with MCMC, check the goodness of fit (e.g., $\chi^2$) at the
+maximum a posteriori (MAP) sample.
+With well-calibrated uncertainties, if the $\chi^2$ is large, this suggests that the MAP
+sample is not a good fit to the data, which indicates that either the returned sample(s)
+are not in the dominant mode, or that the model is insufficient for explaining the data.
+
+Even if both of these checks pass, it still does not guarantee that we have
+representative samples from the dominant posterior mode.
+In practice, we have found that unless the data are very adversarial, these tests tend
+to be sufficient.
+Section~\ref{sec:cases-apogee} shows an example of using these checks to assess the
+returned samples.
 
 \todo{Decide on whether we merge the relevant PR and if so describe it as another diagnostic check.}
 
@@ -754,8 +789,11 @@ If $J_{\rm eff} \gg 1$, many prior samples contribute to the posterior pdf, and 
 uncertainty on $\ln p(\vec{y})$ is approximately $J_{\rm eff}^{-1/2}$.
 If $J_{\rm eff} \approx 1$, a single prior sample dominates, and the posterior pdf is
 probably much narrower than the typical spacing between prior samples.
-In this regime, the returned samples locate a mode of the posterior but do not resolve
-it, so the evidence estimate is unreliable.
+In this regime, the returned samples may lie near a mode of the posterior but do not
+necessarily resolve it.
+Also, the mode may not be the dominant mode of the posterior
+(Section~\ref{sec:methods-gmax}), so the evidence estimate is unreliable (but is
+typically too low).
 If the sum of the $M$ returned weights is close to one, this tells us that $M$ is large
 enough to contain most of the posterior mass.
 \harv\ will compute these diagnostics when prompted and return these along with the FML
@@ -770,11 +808,11 @@ There are three possible outcomes of the rejection sampling for a given source
   \item Few samples survive, $J_{\rm eff} \sim 1$, and these samples are unimodal in
     period (i.e., their range in period is smaller than $\Delta = 4\,P_{\rm min}^2 /
     (2\pi\,T)$, where $P_{\rm min}$ is the smallest period among the samples and $T$ is
-    the time spanned by the data, as in \citealt{Price-Whelan:2017}). In this case, we
-    assume that the posterior pdf is effectively unimodal, and we can use the surviving
-    samples as an initialization for standard inference methods (e.g., MCMC). This is
-    the typical outcome for data with a high signal-to-noise ratio
-    (Section~\ref{sec:cases-gaia4}).
+    the time spanned by the data, as in \citealt{Price-Whelan:2017}). In this case, the
+    posterior pdf may be effectively unimodal, so we can use the surviving samples as an
+    initialization for standard inference methods (e.g., MCMC), with the checks
+    described in Section~\ref{sec:methods-gmax}. This is the typical outcome for data
+    with a high signal-to-noise ratio (Section~\ref{sec:cases-gaia4}).
   \item Few samples survive, $J_{\rm eff} > 1$ but is small, and the samples span a
     period range larger than $\Delta$.
     In this case, the posterior pdf is probably multimodal, and in the context of \harv,
@@ -913,11 +951,10 @@ time baseline of the data in each case).
 For the three sources with large RV scatter, the final outcome depends on the number of
 visits: For the source with 3 visits, many samples survive and nearly all have periods
 below $\lesssim100~\unit{day}$ but they are spread over many period modes.
-For the source with 6 visits, only 2 samples survive and they sit in different period
-modes (the baseline is long so the period resolution is high), so more prior samples are
-needed to resolve these modes (or use a different sampling method).
-For the source with 13 visits, a single sample survives, and we continue sampling with
-MCMC.
+For the sources with 6 and 13 visits, only two samples and one sample survive,
+respectively, so we rerun the rejection sampling for these two sources with $10^8$ new
+prior samples (Section~\ref{sec:methods-gmax}), and we show and report the results of
+these larger runs (see below).
 
 \begin{figure*}
   \centering
@@ -930,10 +967,9 @@ MCMC.
     shows a larger set of posterior samples in period and eccentricity.
     The inset box in the left panel shows the number of visits and the log Bayes factor
     $\ln\mathcal{B}$ for the companion model relative to a constant-velocity model.
-    The samples are from the rejection sampling, except for 2M20183197+1953430, where we
-    continue sampling with MCMC.
-    Note that the middle panel for 2M15035796-4533457 has only 2 rejection samples
-    returned.
+    The samples are from the rejection sampling (with $10^8$ prior samples for
+    2M15035796-4533457 and 2M20183197+1953430), except for 2M20183197+1953430, where we
+    also continue sampling with MCMC.
     \label{fig:apogee-large}
   }
 \end{figure*}
@@ -952,12 +988,15 @@ MCMC.
   \centering
   \caption{
     Results for the six \apogee\ sources, using the same $J = 10^7$ prior
-    samples.
+    samples, except for 2M15035796-4533457 and 2M20183197+1953430, for which we use a
+    second run with $J = 10^8$ new prior samples (see text).
     $N$ is the number of visits, $T$ is the time spanned by the visits, $M$ is the
     number of samples that survive the rejection step, $J_{\rm eff}$ is the effective
     sample size, $w_{\rm max}$ is the largest importance weight
     (Equation~\ref{eq:weights}), and $\ln\mathcal{B}$ is the log Bayes factor of the
     companion model relative to a constant-velocity model.
+    For sources with $J_{\rm eff} < 3$, the evidence estimate and therefore
+    $\ln\mathcal{B}$ is unreliable, so we mark these values with a dagger.
     \label{tab:apogee}
   }
   \begin{tabular}{lrrrrrl}
@@ -965,9 +1004,6 @@ MCMC.
                  &        &          & Number of           & Effective     & Log Bayes        & Sampling \\
      \apogee\ ID & Visits & Baseline & Rejection samples   & sample size   & factor           & outcome  \\
                  & $N$    & $T$ [d]  & $M$                 & $J_{\rm eff}$ & $\ln\mathcal{B}$ &          \\
-    % \apogee\ ID & Num. visits & Baseline & Num. Rejection Samples & Effective sample size & Bayes factor &
-    % Sampling outcome \\
-    % & $N$ & $T$ [d] & $M$ & $J_{\rm eff}$ &  $\ln\mathcal{B}$ & \\
     \hline
     \input{tables/cs1-apogee-output.tex}
     \\
@@ -986,16 +1022,25 @@ that the companion model is preferred for the former and is marginal for the lat
 For the two sources with $N=6$ visits, the source with small scatter
 (2M22122067+4152581) also has many samples returned and a large effective sample size,
 and a marginal Bayes factor.
-The source with large scatter (2M15035796-4533457) has only two samples returned in
-different period modes, and the effective sample size is small, which suggests that the
-posterior pdf is multimodal and that more prior samples are needed to resolve the modes.
-The evidence estimate is therefore unreliable, but the Bayes factor is so large
+The source with large scatter (2M15035796-4533457) has only two samples returned with
+$10^7$ prior samples, in different period modes, so we rerun the rejection sampler with
+$10^8$ new prior samples.
+With $10^7$ prior samples, the best sample has $ln G_{\rm max} = -21.4$ and the two
+samples have periods around 33 days.
+With $10^8$ prior samples, the best sample has $ln G_{\rm max} = -11.9$ and, again two
+samples are returned, but now with periods around 17 days.
+Even with $10^8$ prior samples, the effective sample size is small, and the samples are
+still sparse, which means that even more prior samples are needed to resolve the modes.
+The evidence estimate is also unreliable, but the Bayes factor is so large
 ($\ln\mathcal{B} \approx 5.5\times10^4$) that the companion model is strongly preferred
 even allowing for a large error in the estimate.
 There are several possible paths forward for cases like this.
-The simplest path is to rerun the rejection sampler with even more prior samples: the
-ratio $J_{\rm eff}/J \approx 2\times10^{-7}$ implies that of order $10^9$ prior samples
-are needed to return a few hundred posterior samples.
+The simplest path is to rerun the rejection sampler with \textit{even more} prior
+samples: the ratio $J_{\rm eff}/J \approx 2\times10^{-8}$ implies that of order
+$10^9$--$10^{10}$ prior samples would be needed to return a few hundred posterior
+samples.
+That is expensive, but possible for a small number of sources, and it parallelizes
+straightforwardly.
 \harv\ also includes an experimental option to build a period prior for each source
 from the periodogram of its data.
 This prior concentrates the prior samples near the periodogram peaks but keeps a
@@ -1015,10 +1060,22 @@ For the two sources with $N \approx 12$ visits, the source with small scatter
 (2M16022747+2902099) has many samples returned and a large effective sample size, but
 the Bayes factor is moderately large, suggesting that the companion model is preferred
 even if the orbital parameters are not well constrained.
-The source with large scatter (2M20183197+1953430) has only one sample returned, which
-passes the unimodal check, so we continue sampling with MCMC.
+The source with large scatter (2M20183197+1953430) has only one sample returned with
+$10^7$ prior samples, at $P = 55.24~\unit{day}$ with $ln G_{\rm max} = -312.4$, so we
+rerun the rejection sampling with $10^8$ new prior samples:
+\begin{verbatim}
+samples = sampler.run(data, key=key,
+    n_prior_samples=100_000_000,
+    return_evidence_stats=True)
+\end{verbatim}
+\noindent
+\todo{After rerunning the notebook: with $10^8$ prior samples, $M$ sample(s) survive at
+$P \approx$ XX~d, and $\ln G_{\rm max}$ rises from $-312.4$ to XX.}
+With $10^8$ prior samples, the best sample has $ln G_{\rm max} = -115.7$ and a period $P
+= 51.29~\unit{day}$.
+At this point, still only one sample survives, so we continue sampling with MCMC.
 For this case, we initialize a No-U-Turn Sampler \citep{TODO} implemented in
-\texttt{numpyro} using the rejection sample(s):
+\texttt{numpyro} using the single rejection sample:
 \begin{verbatim}
 if samples.period_unimodal(data):
     mcmc = harv.NumpyroSampler(prior, model)
@@ -1027,7 +1084,20 @@ if samples.period_unimodal(data):
 \end{verbatim}
 \noindent
 We run 4 chains, run for 1000 initial warm-up steps, and then run for 2000 steps.
-At the end of the sampling, all parameters have $\hat{R} < 1.01$.
+At the end of the sampling, all parameters have $\hat{R} < \todo{1.01}$.
+At the MAP sample, $P = \todo{51.29}~\unit{day}$ and $\chi^2 \approx 3$ for 13 visits
+(7 degrees of freedom), which is a good fit given the calibrated uncertainties.
+In this case, things seem to have worked out well, but the checks were important.
+If we had continued with MCMC from the single sample from the first run with $10^7$
+prior samples, all chains would have converged within a peak at $P = 55.21~\unit{day}$
+(also with $\hat{R} < 1.01$ for all parameters, because all of the chains start in the
+same mode), but with $\chi^2 = 416$ at the MAP sample.
+However, a good fit still does not rule out that other modes exist, and unfortunately
+the only way to know that is to continue running the rejection sampling with more and
+more prior samples until the returned samples are dense enough to resolve the posterior
+structure.
+For this case, we compare our results with those from a nested sampler, which explores
+the full prior, in Section~\ref{sec:cases-interop}.
 
 Because we do not include a jitter parameter or other noise model, both the companion
 model and the constant-velocity model (used for the evidence and Bayes factor estimates)
@@ -1098,10 +1168,12 @@ With these choices, we generate $J = 10^7$ prior samples and run the rejection s
 Only one sample survives the rejection step, with a period of $P \approx
 574~\unit{day}$.
 
-We continue with standard MCMC (NUTS), as above.
+We continue with MCMC, using the No-U-Turn Sampler \citep[NUTS;][]{TODO} implemented
+in \package{numpyro}.
 We first use the returned sample to initialize an optimizer to find the nearby maximum
 of the posterior pdf mode that the sample is in, which shifts the MCMC initialization to
-$P = 578.3~\unit{day}$.
+$P = 578.3~\unit{day}$, where the fit is good (reduced $\chi^2 = 1.02$; see
+Section~\ref{sec:methods-gmax}).
 We then run NUTS starting from this optimized location with 4 chains, starting with 1000
 steps of warm-up and then 2000 steps of sampling.
 From modeling the astrometry alone, we infer $P = 577.7 \pm 3.7$~days and $e =
@@ -1187,7 +1259,15 @@ recent analysis \citep{Kanodia:2026}, $10.70 \pm 0.32~{\rm M_J}$, who use the sa
 }
 \label{sec:cases-interop}
 
-\todo{Write this.}
+\todo{Write this. Include the evidence comparison (\texttt{scripts/nested-sampling.ipynb},
+\texttt{tables/cs3-evidence.tex}), and compare the nested-sampling modes for
+2M20183197+1953430 and 2M15035796-4533457 with the results in
+Section~\ref{sec:cases-apogee}: for 2M20183197+1953430, nested sampling finds a peak at
+$P \approx 51.29~\unit{day}$ with $\ln L = -5.35$ and $\chi^2 = 1.7$ for 13 visits,
+compared with $\ln L = -212.8$ and $\chi^2 = 416$ at the $55.21~\unit{day}$ peak near the
+single sample from the $10^7$ run. The peak occupies a fraction $\sim\exp(\ln Z - \ln
+L_{\rm max}) \approx e^{-28} \approx 10^{-12}$ of the prior volume (nested sampling $\ln
+Z \approx -33$).}
 
 %-------------------------------------------------------------------
 \subsection{
