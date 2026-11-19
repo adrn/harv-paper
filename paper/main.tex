@@ -1,5 +1,7 @@
 % TODO:
 % - A final check with Claude: did we say correct things about the code?
+% - Switch to using listings / https://ctan.org/pkg/listings instead of verbatim for
+%   code blocks.
 
 \documentclass[twocolumn]{AASTeX7/aastex701}
 
@@ -36,9 +38,9 @@ An alternative approach is to include every source from the parent sample in the
 population inference.
 This requires generating orbital parameter posterior samples even for sources with
 sparse, noisy, or null signals in the same manner as the well-constrained systems.
-\harv\ is an open-source Python package that enables posterior sampling with radial
-velocities (RVs), \gaia\ epoch astrometry, or both, across a range of data quality
-regimes.
+\harv\footnote{\url{https://github.com/aprice-whelan/harv}} is an open-source Python
+package that enables posterior sampling with radial velocities (RVs), \gaia\ epoch
+astrometry, or both, across a range of data quality regimes.
 Like its predecessor \joker, \harv\ can sample Keplerian orbit parameters either through
 traditional Markov chain Monte Carlo (MCMC) or via a custom rejection sampler that
 analytically marginalizes over linear parameters in the model to improve efficiency.
@@ -316,6 +318,8 @@ generate posterior samples.
   \caption{
     The parameterizations implemented in \harv, with their nonlinear and linear
     parameters.
+    For \texttt{SqrtEccRV}, $\lambda = \omega - 2\pi f_0$ is the mean longitude at the
+    reference time $t_{\rm ref}$.
     For the Fourier parameterizations, the number of Fourier terms is user-defined, so
     the number of linear coefficients $a_k$ and $b_k$ depends on the number of terms.
     \label{tab:parameterizations}
@@ -329,7 +333,7 @@ generate posterior samples.
       $P$, $e$, $f_0$, $\omega$ &
       $K$, $v_0$ \\
     \texttt{SqrtEccRV} &
-      $P$, $\sqrt{e}\cos\omega$, $\sqrt{e}\sin\omega$, \todo{phase} &
+      $P$, $\sqrt{e}\cos\omega$, $\sqrt{e}\sin\omega$, $\lambda$ &
       $K$, $v_0$ \\
     \texttt{FourierRV} &
       $P$ &
@@ -849,9 +853,9 @@ variational inference), or even with other libraries that can use \jax\ function
 For example, \package{numpyro} enables extracting a function that evaluates the log
 density (and components) of a model, which can be passed as \jax\ functions to samplers
 in other libraries.
-We use this in Section~\ref{sec:cases-interop} to compute the evidence for some of the
-sources in Section~\ref{sec:cases-apogee} with a nested sampler from \package{blackjax}
-\citep{Cabezas:2024}.
+We use this in Section~\ref{sec:cases-interop} to run a nested sampler from
+\package{blackjax} \citep{Cabezas:2024} on some of the sources in
+Section~\ref{sec:cases-apogee}.
 
 We can also use the marginal log-likelihood function itself for data formats that \harv\
 supports within a larger or separate model to handle additional data or parameters.
@@ -1176,6 +1180,7 @@ joint_model = harv.JointModel.for_rv_and_gaia(
 The RV model here includes two new parameters that represent the velocity offset for HPF
 and NEID relative to FIES, which are linear parameters that \harv\ marginalizes over,
 along with a jitter parameter shared by all three instruments:
+\todo{the verbatim spills over the page margin.}
 \begin{verbatim}
 rv, indicator, names = rv_data.indicator_data_by_type(
     harv.RVData, reference="FIES")
@@ -1243,22 +1248,25 @@ same \gaia\ pre-release data but more RV measurements.
 }
 \label{sec:cases-interop}
 
-The rejection sampler returns an estimate of the evidence $\ln p(\vec{y})$ for each
-source, with its Monte Carlo uncertainty and the effective sample size $J_{\rm eff}$
-(Section~\ref{sec:methods-rejection}).
-In this case study, we compare these estimates with those from nested sampling
-\citep{TODO}, which we run on the same \harv\ model and prior pdf through
-\package{numpyro} (Section~\ref{sec:methods-interop}).
+Because \harv\ builds on top of \package{numpyro} (Section~\ref{sec:methods-interop}),
+which supports extracting functions that evaluate the log density components of a model,
+we can use the same model in other inference tools, outside of \harv\ or
+\package{numpyro} itself.
+In this case study, we run a nested sampler \citep{TODO} on the \harv\ model for four of
+the \apogee\ sources from Section~\ref{sec:cases-apogee}, and compare the results with
+those from the rejection sampler.
+Nested sampling explores the full prior pdf and returns posterior samples and the
+evidence, so it is often used for posterior pdfs with many modes.
+We therefore also use the comparison here to show why we do not use it in place of the
+rejection sampler for every source.
 We use the nested slice sampler \citep{TODO} implemented in \package{blackjax}
-\citep{Cabezas:2024}, and four of the \apogee\ sources from
-Section~\ref{sec:cases-apogee}: two with $J_{\rm eff} \gg 1$, and the two with $J_{\rm
-eff} \approx 1$, for which we use the runs with $10^8$ prior samples.
+\citep{Cabezas:2024}.
 
-The nested sampler needs the log prior pdf and the log likelihood of a single point in
-parameter space as separate functions.
-\package{numpyro} provides both from the model that \harv\ constructs, in which the
-marginal likelihood (Equation~\ref{eq:marginal-likelihood}) enters as a factor named
-\texttt{ln\_lik}:
+The nested sampler needs the log prior pdf and the log likelihood as separate functions.
+\package{numpyro} provides both of these from the model that is constructed in \harv, as
+we show below.
+In the code, the marginal likelihood (Equation~\ref{eq:marginal-likelihood}) enters the
+model as a factor named \texttt{ln\_lik}:
 \begin{verbatim}
 numpyro_model = model.numpyro_model(
     prior.nonlinear_priors, data,
@@ -1266,12 +1274,12 @@ numpyro_model = model.numpyro_model(
 prior_model = block(numpyro_model,
                     hide=["ln_lik"])
 
-def log_prior(u):
+def log_prior(z):
     return -potential_energy(
-        prior_model, (), {}, u)
+        prior_model, (), {}, z)
 
-def log_lik(u):
-    p = constrain_fn(prior_model, (), {}, u)
+def log_lik(z):
+    p = constrain_fn(prior_model, (), {}, z)
     return log_likelihood(numpyro_model, p,
         batch_ndims=0)["ln_lik"]
 
@@ -1279,111 +1287,139 @@ nss = blackjax.nss(log_prior, log_lik,
     num_inner_steps=20, num_delete=100)
 \end{verbatim}
 \noindent
-Here, \texttt{u} is a point in the unconstrained space of \package{numpyro}, in which
-\package{numpyro} maps each parameter to the real line, and the log prior pdf includes
-the Jacobian of this mapping.
-For 100 prior samples, \texttt{log\_lik} agrees with the marginal log likelihood that
-the rejection sampler computes to within a relative difference of $10^{-10}$.
-We draw 1000 live points from the prior pdf, take 20 slice steps per new point, replace
-100 points per iteration, and stop when the evidence in the live points is less than
-$10^{-3}$ of the accumulated evidence.
-For each source, we run the nested sampler with five different seeds, and we repeat the
-rejection sampling five times with independent prior samples, with the same $J$ as in
-Section~\ref{sec:cases-apogee}.
-Table~\ref{tab:evidence} lists the results.
+Here, \texttt{z} is a point in the unconstrained space used internally by
+\package{numpyro} --- \package{numpyro} maps each parameter to the real line, and the
+log prior pdf includes the Jacobian of this mapping.
+For the nested sampling run, we draw 1000 live points from the prior pdf, take 20 slice
+steps per new point, replace 100 points per iteration, stop when the evidence in the
+live points is less than $10^{-3}$ of the accumulated evidence, and run the nested
+sampler with five different seeds for each source.
+We take the number of slice steps as 5 times the number of sampled parameters, which is
+the default in \package{PolyChord} \citep{TODO}.
 
-\begin{table*}
+For the three sources from Section~\ref{sec:cases-apogee} with $J_{\rm eff} \gg 1$
+(2M02323271+3350542, 2M16022747+2902099, and 2M15323868+4218297), the evidence
+estimates from the two methods agree.
+The rejection sampler gives $\ln p(\vec{y}) = -8.4890 \pm 0.0005$, $-6.2214 \pm 0.0022$,
+and $-17.729 \pm 0.007$, and nested sampling gives $-8.50 \pm 0.03$, $-6.24 \pm 0.09$,
+and $-17.74 \pm 0.07$ (mean and standard deviation over random number seeds).
+This is expected and reassuring.
+For these sources, the uncertainty that each nested sampling run reports also matches
+the scatter over the random seeds (0.034, 0.060, and 0.082, compared with 0.031, 0.086,
+and 0.069), which suggests that our settings are sufficient here.
+
+The two methods are similar in spirit.
+Both \harv\ and nested sampling estimate the evidence using samples from the prior pdf,
+but the computational cost of the methods depend differently on how informative the data
+are for a given run.
+We can quantify how informative the data are with the information gain or simply the
+``information'' \citep{Skilling:2006},
+\begin{equation}
+  H = \int \dd\vec{\theta}\, p(\vec{\theta} \given \vec{y})
+    \ln \frac{p(\vec{\theta} \given \vec{y})}{p(\vec{\theta})}
+  \quad ,
+\end{equation}
+which is equivalent to the Kullback--Leibler divergence of the posterior pdf from the
+prior pdf.
+In this context, the posterior roughly occupies a fraction $e^{-H}$ of the prior mass
+\citep{Skilling:2006}.
+Since we use samples from the prior pdf as proposals in the rejection sampler, the
+posterior samples will have an acceptance probability at most of $e^{-H}$, so the number
+of prior samples needed to resolve the posterior pdf grows exponentially with $H$.
+For the three sources above, $H = 1.05$, 3.27, and 6.11 (from the nested sampling runs),
+and returned samples with $J_{\rm eff}/J = 0.28$, 0.021, and 0.0018, compared to $e^{-H}
+= 0.35$, 0.038, and 0.0022.
+\todo{In the last sentence, which numbers come from nested sampling vs. rejection? I think it's confusing that they are mixed. Maybe we should quote Jeff/J first (and make clear that is from rejection), and then the nested sampling numbers.}
+
+Nested sampling instead keeps a set of $n_{\rm live}$ ``live points,'' which are
+essentially samples from the prior pdf that are constrained to have a likelihood above
+a threshold, and these points are repeatedly updated with new samples from the prior
+pdf that are constrained to have an even higher likelihood than the lowest-likelihood
+live point (see \citealt{TODO} for a review of nested sampling).
+This procedure successively shrinks the prior volume enclosed by the live
+points by a factor of about $e^{-1/n_{\rm live}}$ per replaced point, so its cost grows
+only linearly with $H$ \citep{TODO}.
+\todo{I think there is a leap in the last sentence here: why does the cost grow only linearly with H? We should explain that a bit more.}
+
+For 2M20183197+1953430, $H \approx 26$, so the rejection sampler would need more than $J
+\gtrsim e^{26} \approx 10^{11}$ prior samples.
+As we saw above, even with $10^8$ prior samples, only one sample survives, and the
+evidence estimate ($-134.1$) is way below the nested sampling estimate ($-33.0 \pm
+2.1$).
+For sources like this, nested sampling (or standard MCMC if the samples lie in a single
+period mode) is a better option.
+
+\begin{figure*}
   \centering
+  \includegraphics[width=\textwidth]{figures/cs3-nested-sampling.pdf}
   \caption{
-    Evidence estimates $\ln p(\vec{y})$ (with velocities in \unit{km.s^{-1}}) for four
-    of the \apogee\ sources in Section~\ref{sec:cases-apogee}, from the rejection
-    sampling and from nested sampling.
-    $N$ is the number of visits and $J$ is the number of prior samples.
-    $J_{\rm eff}$ and the rejection estimate, with its reported Monte Carlo
-    uncertainty, are from the run in Section~\ref{sec:cases-apogee}, and $\sigma_{\rm
-    rej}$ is the standard deviation of the rejection estimate over five runs with
-    independent prior samples (including that run).
-    The nested sampling estimate is the mean and standard deviation over five runs with
-    different seeds, and $\Delta$ is the rejection estimate minus the mean nested
-    sampling estimate.
-    \label{tab:evidence}
+    Posterior samples in period and eccentricity for 2M15323868+4218297 (see
+    Figure~\ref{fig:apogee-large}, top left panel), which has three visits over about
+    26~days.
+    \textit{Left:} 4096 random samples (of 9104) from one run of the rejection sampler
+    with $10^7$ prior samples.
+    \textit{Right:} The 4096 posterior draws from one run of the nested slice sampler
+    with 1000 live points.
+    \todo{edit}
+    Both methods give the same evidence and find the same period modes, but the nested
+    sampling draws, which are resampled from correlated, weighted dead points, clump
+    within the modes, and the probabilities of the modes differ between runs
+    (Section~\ref{sec:cases-interop}).
+    \label{fig:nested-sampling}
   }
-  \begin{tabular}{lrrrrrrr}
-    \hline
-                &     &     &               & Rejection        &                    & Nested sampling  &          \\
-    \apogee\ ID & $N$ & $J$ & $J_{\rm eff}$ & $\ln p(\vec{y})$ & $\sigma_{\rm rej}$ & $\ln p(\vec{y})$ & $\Delta$ \\
-    \hline
-    \input{tables/cs3-evidence.tex}
-    \\
-    \hline
-  \end{tabular}
-\end{table*}
+\end{figure*}
 
-For the two sources with $J_{\rm eff} \gg 1$, the two methods agree: the differences
-are 0.007 and 0.022, smaller than the scatter of the nested sampling estimates over
-seeds (0.031 and 0.086).
-The Monte Carlo uncertainties that the rejection sampler reports match the scatter over
-its five runs, and they are about 40--90 times smaller than the scatter of the nested
-sampling estimates.
-On a laptop CPU (Apple M4 Max), each rejection run with $10^7$ prior samples takes about
-2~\unit{s}, and each nested sampling run takes 2--6~\unit{s}.
-To check the analytic marginalization over the linear parameters, we also run the nested
-sampler on the model without the marginalization (\texttt{marginalized=False}), so that
-the nested sampler also samples $K$ and $v_0$.
-The evidence estimates agree with those from the marginalized model: $-8.61 \pm 0.09$
-and $-6.26 \pm 0.17$ (three seeds), compared with $-8.50 \pm 0.03$ and $-6.24 \pm 0.09$.
+However, nested sampling, like MCMC, has its own limitations.
+For example, nested sampling can return a bad sampling from a posterior pdf with many
+modes even when the data are only moderately informative.
+We demonstrate this with the source 2M15323868+4218297, which has three visits over 26
+days and a large RV scatter (Figure~\ref{fig:apogee-large}).
+From the rejection sampler, we can see that the posterior pdf has many modes in period
+between 2 and about $100~\unit{day}$ (also see left panel of
+Figure~\ref{fig:nested-sampling}).
+For this source, we estimate $H \approx 6.1$ from the rejection sampling run, and with
+an initial sample of $J = 10^7$ prior samples, we get an ESS of $J_{\rm eff} = 1.8
+\times 10^4$.
+Here, we ran five runs of the rejection sampler with independent prior samples and find
+that they agree to within the sampling noise.
 
-For the two sources with $J_{\rm eff} \approx 1$, the uncertainties that the rejection
-sampler reports (1.0 and 0.70) are not reliable.
-For 2M20183197+1953430, the five runs with $10^8$ prior samples give estimates between
-$-134.1$ and $-27.3$, and nested sampling gives $-33.0 \pm 2.1$.
-All five runs return a single sample within $0.03~\unit{day}$ of $P = 51.29~\unit{day}$,
-in the one mode that nested sampling finds and in which the MCMC samples in
-Section~\ref{sec:cases-apogee} lie.
-These samples are not near the top of the peak: their marginal log likelihoods range
-from $\ln G = -115.7$ to $-8.9$, while the highest value that nested sampling finds is
-$\ln G = -5.35$ ($-5.36$ at the MAP sample from the MCMC in
-Section~\ref{sec:cases-apogee}).
-The peak is narrow: the ratio of the evidence to the peak likelihood, $\exp(-33.0 +
-5.35) \approx 10^{-12}$, is approximately the prior probability of the peak, so a set of
-$10^8$ prior samples is unlikely to include a sample near its top.
-Because a single prior sample dominates the evidence estimate from such a run, the
-estimate is usually too low, but it can also be too high, as for one of the five runs
-here.
-We also reproduce the result in Section~\ref{sec:cases-apogee} for the first run with
-$10^7$ prior samples: MCMC initialized from its single sample, at $P =
-55.24~\unit{day}$, converges within a peak at $P = 55.21~\unit{day}$ with $\hat{R} =
-1.00$ for all parameters, and with $\ln G = -212.8$ and $\chi^2 = 418$ at the MAP
-sample.
+We then run the nested slice sampler (with the same setup as above using 1000 live
+points) five times with different random seeds.
+We get a consistent evidence estimate from the nested sampler (compared to the rejection
+sampler) and similar mode structure in period (right panel of
+Figure~\ref{fig:nested-sampling}), but the posterior samples are much clumpier than the
+rejection samples.
+Also, between the five runs, the probabilities of the modes vary by more than their
+uncertainties, which suggests that the nested sampling runs are not converged.
+In the right panel of Figure~\ref{fig:nested-sampling}, we show 4096 posterior samples
+from one of the nested sampling runs, which are resampled from the weighted dead points,
+but the effective sample size is only about 2200, also indicating that the samples are
+not well-distributed among the modes.
+More live points would reduce the scatter of the nested sampling estimates as $n_{\rm
+live}^{-1/2}$, so we estimate that matching the precision of a single rejection run
+would need about 30 times more live points, which corresponds to about 30 times more
+time per run.
 
-For 2M15035796-4533457, the estimates with $10^8$ prior samples are close to the nested
-sampling estimate: the run in Section~\ref{sec:cases-apogee} gives $-29.9$, and the five
-runs scatter by 1.2, compared with $-29.19 \pm 0.40$ from nested sampling.
-With $10^7$ prior samples, the five runs give estimates between $-45.3$ and $-28.8$.
-The posterior pdf for this source has many modes in period.
-Nested sampling puts most of the posterior probability in a mode at $P \approx
-32.7~\unit{day}$, where five of the eight samples from the five runs with $10^8$ prior
-samples also lie, and the rest in many smaller modes between 16 and $98~\unit{day}$.
-The highest marginal likelihood that each nested sampling run finds is similar, with
-$\ln G$ between $-9.6$ and $-9.3$, but it lies in different modes (at 32.7, 39.3, 44.6,
-and $70.1~\unit{day}$), and it is higher than the largest value in any of the rejection
-runs with $10^8$ prior samples ($\ln G_{\rm max}$ between $-13.8$ and $-10.9$).
-The nested sampler does not resolve this posterior pdf reliably either: the fraction of
-the posterior probability in the $32.7~\unit{day}$ mode varies from 47\% to 94\% over
-the five seeds (and is 69\% and 77\% for two runs with 5000 live points), while the
-evidence estimates vary by only 0.4.
+Even with the current setup, the rejection sampler is already much faster for this
+dataset.
+On a laptop CPU (Apple M4 Max), after \package{JAX} compilation, one rejection run for
+this source takes 1.6~\unit{s} and returns about 9100 independent samples, whereas one
+nested sampling run takes 3.5~\unit{s} and returns weighted samples with an effective
+sample size of about 2200.
+So, \harv's rejection sampler therefore generates about 5700 effective samples per
+second versus about 640 per second for the nested sampling run with 1000 live points.
+But the nested sampling number is too optimistic, because the effective sample size of
+the weights does not include the scatter of the mode probabilities we found above.
+Using that scatter, and assuming we want to reduce it to the level of the rejection
+sampler, one nested sampling run produces only about 340 independent samples (i.e.,
+about 100 per second).
+So, in order to match the precision of the rejection run, we would need about 30 times
+more live points and the total speed of the nested sampler would be about \todo{how
+much?} slower than the rejection sampler.
 
-For sources with $J_{\rm eff} \gg 1$, the evidence estimate from the rejection sampler
-is precise and agrees with nested sampling, and it comes from the same run that returns
-the posterior samples.
-For sources with $J_{\rm eff} \approx 1$, the estimate is unreliable, as the diagnostics
-indicate, and nested sampling on the same \harv\ model gives a better estimate and can
-find narrow modes that the rejection sampling misses.
-Nested sampling has its own limitations here, however: for both sources with $J_{\rm
-eff} \approx 1$, its estimates scatter over seeds by more than the uncertainties it
-reports for each run (2.1 compared with about 0.17 for 2M20183197+1953430, and 0.40
-compared with about 0.14 for 2M15035796-4533457), and the posterior probabilities of the
-period modes for 2M15035796-4533457 change from seed to seed.
+For pipelines that analyze many sources with varied data quality or number of epochs, we
+therefore recommend using the rejection sampler first, and then using nested sampling or
+MCMC only for sources that need follow-up.
 
 %-------------------------------------------------------------------
 \subsection{

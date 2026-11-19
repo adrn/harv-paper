@@ -455,8 +455,8 @@ wheels = [
 
 [[package]]
 name = "harv"
-version = "0.0.2.dev219+g2aa6ebf85"
-source = { git = "https://github.com/adrn/harv.git#2aa6ebf8529bc5997f003f5a1fcb6b9b53e94b05" }
+version = "0.0.2.dev238+g4d7e5d20a"
+source = { git = "https://github.com/adrn/harv.git#4d7e5d20a1bfc8752de3b12f4e9648f98fb1a4d9" }
 dependencies = [
     { name = "equinox" },
     { name = "h5py" },
