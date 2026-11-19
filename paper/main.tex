@@ -1,7 +1,5 @@
 % TODO:
 % - A final check with Claude: did we say correct things about the code?
-% - Switch to using listings / https://ctan.org/pkg/listings instead of verbatim for
-%   code blocks.
 
 \documentclass[twocolumn]{AASTeX7/aastex701}
 
@@ -9,6 +7,19 @@
 \shortauthors{Price-Whelan et al.}
 
 \usepackage{preamble/preamble-adrn}
+\usepackage{listings}
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\footnotesize,
+  columns=fullflexible,
+  keepspaces=true,
+  upquote=true,
+  breaklines=true,
+  showstringspaces=false,
+  keywordstyle=\color[HTML]{0033B3},
+  stringstyle=\color[HTML]{067D17},
+  commentstyle=\color[HTML]{8C8C8C}\itshape,
+}
 \DeclareSIUnit\Mjup{M_J}
 
 \newcommand{\harv}{\package{harv}}
@@ -926,11 +937,11 @@ We first generate $J = 10^7$ prior samples, and then use the same prior samples 
 stars.
 For each source, we run the rejection sampling with these prior samples, and request the
 evidence estimate and the diagnostics described in Section~\ref{sec:methods-rejection}:
-\begin{verbatim}
+\begin{lstlisting}
 samples = sampler.run_with_samples(
     data, prior_samples, key=key,
     return_evidence_stats=True)
-\end{verbatim}
+\end{lstlisting}
 \noindent
 Figures~\ref{fig:apogee-large} and~\ref{fig:apogee-small} show the data and the returned
 samples for the six sources, and Table~\ref{tab:apogee} summarizes the results from this
@@ -1056,23 +1067,23 @@ model is preferred even if the orbital parameters are not well constrained.
 For the source with large scatter (2M20183197+1953430), only one of the $10^7$ prior
 samples survives, at $P = 55.24~\unit{day}$ with $\ln G_{\rm max} = -312.4$, so we
 rerun the rejection sampling with $10^8$ new prior samples:
-\begin{verbatim}
+\begin{lstlisting}
 samples = sampler.run(data, key=key,
     n_prior_samples=100_000_000,
     return_evidence_stats=True)
-\end{verbatim}
+\end{lstlisting}
 \noindent
 With $10^8$ prior samples, the best sample has $\ln G_{\rm max} = -115.7$ and a period $P
 = 51.29~\unit{day}$.
 At this point, still only one sample survives, so we continue sampling with MCMC.
 For this case, we initialize the No-U-Turn Sampler \citep[NUTS;][]{TODO} implemented in
 \package{numpyro} using the single rejection sample:
-\begin{verbatim}
+\begin{lstlisting}
 if samples.period_unimodal(data):
     mcmc = harv.NumpyroSampler(prior, model)
     samples = mcmc.run(
         data, init_samples=samples, key=key)
-\end{verbatim}
+\end{lstlisting}
 \noindent
 We run 4 chains, each with 1000 warm-up steps followed by 2000 sampling steps.
 At the end of the sampling, all parameters have $\hat{R} < 1.01$.
@@ -1172,23 +1183,22 @@ The joint model shares the orbital parameters between the two data types (RV and
 astrometry).
 Because the companion is unseen, the astrometric orbit determines the velocity
 semi-amplitude:
-\begin{verbatim}
+\begin{lstlisting}
 joint_model = harv.JointModel.for_rv_and_gaia(
     components={"rv": rv_model,
                 "astrom": astrom_model})
-\end{verbatim}
+\end{lstlisting}
 \noindent
 The RV model here includes two new parameters that represent the velocity offset for HPF
 and NEID relative to FIES, which are linear parameters that \harv\ marginalizes over,
 along with a jitter parameter shared by all three instruments:
-\todo{the verbatim spills over the page margin.}
-\begin{verbatim}
+\begin{lstlisting}
 rv, indicator, names = rv_data.indicator_data_by_type(
     harv.RVData, reference="FIES")
 rv_model = harv.RVModel(extensions=(
     harv.Jitter(obs_unit="m/s"),
     harv.MultiSurveyOffset(indicator, names, "m/s")))
-\end{verbatim}
+\end{lstlisting}
 \noindent
 The astrometry alone cannot distinguish the orbit from a mirrored orbit in which
 ($\omega \to \omega + \pi$, $\Omega \to \Omega + \pi$), so we first optimize the joint
@@ -1201,6 +1211,7 @@ break this degeneracy.
   \centering
   \includegraphics[width=\textwidth]{figures/gaia4-joint.pdf}
   \caption{
+    \todo{Why you labels so big eh?}
     Results from the joint model for Gaia-4.
     \textit{Left:} The \gaia\ \dr{4} along-scan positions after subtracting the
     five-parameter (sky position, proper motion, and parallax) astrometric solution of
@@ -1268,7 +1279,7 @@ The nested sampler needs the log prior pdf and the log likelihood as separate fu
 we show below.
 In the code, the marginal likelihood (Equation~\ref{eq:marginal-likelihood}) enters the
 model as a factor named \texttt{ln\_lik}:
-\begin{verbatim}
+\begin{lstlisting}
 numpyro_model = model.numpyro_model(
     prior.nonlinear_priors, data,
     prior.linear_priors)
@@ -1286,7 +1297,7 @@ def log_lik(z):
 
 nss = blackjax.nss(log_prior, log_lik,
     num_inner_steps=20, num_delete=100)
-\end{verbatim}
+\end{lstlisting}
 \noindent
 Here, \texttt{z} is a point in the unconstrained space used internally by
 \package{numpyro} --- \package{numpyro} maps each parameter to the real line, and the
