@@ -1388,7 +1388,7 @@ single period mode) is a better option, but with appropriately chosen run settin
     correlated, and we do not have enough live points.
     With 10,000 live points, the samples look much more like the rejection samples, but
     each run takes about 20 times as long as a rejection run, and the probabilities of
-    some modes still differ between runs (see text in Section~\ref{sec:cases-interop}).
+    some modes differ between runs (see text in Section~\ref{sec:cases-interop}).
     \label{fig:nested-sampling}
   }
 \end{figure*}
@@ -1426,7 +1426,8 @@ If we repeat the rejection sampling with five random number seeds, we find that 
 mode varies from 0.127 to 0.132, but with an uncertainty of 0.004 (i.e., more
 appropriate given the scatter).
 Importantly, running the nested sampler for \emph{longer} would not fix this, because
-the run stops when the live points hold less than $10^{-3}$ of the evidence.
+the run stops when the live points hold less than $10^{-3}$ of the evidence, so more
+iterations would just add more points with very small weights.
 Instead, we would need to increase the number of live points until the modes are well
 sampled, which can be expensive for complex posterior pdf structure like we see here.
 
