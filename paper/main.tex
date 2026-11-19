@@ -1081,8 +1081,7 @@ degrees of freedom), which is a good fit given the calibrated uncertainties.
 The checks mattered here: if we had continued with MCMC from the single sample from the
 first run with $10^7$ prior samples, all chains would have converged within a peak at $P
 = 55.21~\unit{day}$ (also with $\hat{R} < 1.01$ for all parameters, because all of the
-chains start in the same mode), but with $\chi^2 = 418$ at the MAP sample
-(Section~\ref{sec:cases-interop}).
+chains start in the same mode), but with $\chi^2 = 418$ at the MAP sample.
 However, a good fit still does not rule out that other modes exist, and unfortunately
 the only way to know that is to continue running the rejection sampling with more and
 more prior samples until the returned samples are dense enough to resolve the posterior
@@ -1115,6 +1114,8 @@ per-source inferences, as we have done in \citet{Price-Whelan:2020}.
   Case study 2: Modeling Gaia-4 with radial velocities and DR4 epoch astrometry
 }
 \label{sec:cases-gaia4}
+
+\todo{We need to explain how we go from the CCD-level astrometry to the field-of-view transit-level astrometry. That was done in harv/docs/tutorials/data/Gaia-DR4-preview.ipynb}
 
 The second case study demonstrates how to use \harv\ to model a source with both radial
 velocity and astrometric data, and with very informative data that precisely constrain
@@ -1341,6 +1342,9 @@ a threshold.
 These points are repeatedly updated with new samples from the prior pdf that are
 constrained to have an even higher likelihood than the lowest-likelihood live point (see
 \citealt{Ashton:2022, Buchner:2023} for reviews of nested sampling).
+Nested sampling keeps the replaced (``dead'') points and weights each by its likelihood
+and the prior volume, so the dead points end up being weighted samples of the posterior
+pdf.
 Each point that is replaced shrinks the prior volume enclosed by the live points by a
 factor of about $e^{-1/n_{\rm live}}$, so every $n_{\rm live}$ replaced points shrink
 the enclosed volume by another factor of $e$.
@@ -1357,6 +1361,8 @@ samples.
 As we saw above, even with $10^8$ prior samples, only one sample survives rejection, and
 the evidence estimate ($-134.1$) is way below the nested sampling estimate ($-33.0 \pm
 2.1$).
+All five nested sampling runs find a single period mode at $P = 51.29~\unit{day}$, the
+same mode as the MCMC samples in Section~\ref{sec:cases-apogee}.
 However, our default nested sampling settings are not sufficient for this source either:
 we re-run the nested sampling with different random seeds and find that the seed-to-seed
 scatter varies the evidence estimate by about 2.1 whereas each run reports an
@@ -1371,15 +1377,18 @@ single period mode) is a better option, but with appropriately chosen run settin
     Posterior samples in period and eccentricity for 2M15323868+4218297 (see
     Figure~\ref{fig:apogee-large}, top left panel), which has three visits over about
     26~days.
-    \textit{Left:} 4096 random samples (of 9104) from one run of the rejection sampler
-    with $10^7$ prior samples.
-    \textit{Right:} The 4096 posterior draws from one run of the nested slice sampler
-    with 1000 live points.
-    \todo{edit}
-    Both methods give the same evidence and find the same period modes, but the nested
-    sampling draws, which are resampled from correlated, weighted dead points, clump
-    within the modes, and the probabilities of the modes differ between runs
-    (Section~\ref{sec:cases-interop}).
+    \textit{Left:} 4096 random samples (of 9104) from one run of \harv's rejection
+    sampler with $10^7$ prior samples.
+    \textit{Middle:} 4096 samples from one run of the nested slice sampler with 1000
+    live points, drawn from the weighted dead points of the run (see text).
+    \textit{Right:} The same, for a run with 10,000 live points.
+    All of these runs give the same evidence and find the same period modes.
+    With 1000 live points, the samples from nested sampling appear clumpy within the
+    modes. This is likely because consecutive dead points along a slice walk are highly
+    correlated, and we do not have enough live points.
+    With 10,000 live points, the samples look much more like the rejection samples, but
+    each run takes about 20 times as long as a rejection run, and the probabilities of
+    some modes still differ between runs (see text in Section~\ref{sec:cases-interop}).
     \label{fig:nested-sampling}
   }
 \end{figure*}
@@ -1401,9 +1410,12 @@ that they agree to within the sampling noise.
 We then run the nested slice sampler (with the same setup as above using 1000 live
 points) five times with different random seeds.
 We get a consistent evidence estimate from the nested sampler (compared to the rejection
-sampler) and similar mode structure in period (right panel of
+sampler) and similar mode structure in period (middle panel of
 Figure~\ref{fig:nested-sampling}), but the posterior samples are much clumpier than the
 rejection samples.
+The 4096 samples in the middle panel are resampled from the weighted dead points, but
+consecutive dead points along a slice walk are correlated, hence the clumpiness within
+the modes.
 Also, the probabilities of the modes vary between our five nested sampling runs by more
 than the uncertainty outputted from the effective sample size of each run (about 2200).
 For example, the fraction of the posterior probability between 12.5 and
@@ -1413,31 +1425,44 @@ sampling runs, with a per-run uncertainty of $\approx 0.007$.
 If we repeat the rejection sampling with five random number seeds, we find that same
 mode varies from 0.127 to 0.132, but with an uncertainty of 0.004 (i.e., more
 appropriate given the scatter).
-Importantly, running the nested sampler for \emph{longer} would not fix this.
+Importantly, running the nested sampler for \emph{longer} would not fix this, because
+the run stops when the live points hold less than $10^{-3}$ of the evidence.
 Instead, we would need to increase the number of live points until the modes are well
 sampled, which can be expensive for complex posterior pdf structure like we see here.
-\todo{edit text to discuss new experiment with 10x more live points}
-The 4096 draws in the right panel of Figure~\ref{fig:nested-sampling} are resampled
-from the weighted dead points, and consecutive dead points along a slice walk are
-correlated, so the draws also clump within the modes.
-We expect more live points to reduce the scatter of the mode probabilities as $n_{\rm
-live}^{-1/2}$, because each mode then holds more live points.
 
-Even with the current setup, the rejection sampler is already much faster for this
-dataset.
+To test this, we also run the nested sampler five times with 10,000 live points
+(replacing 1000 points per iteration).
+The samples then look much more like the rejection samples (right panel of
+Figure~\ref{fig:nested-sampling}), and the fraction of the posterior probability between
+12.5 and $15.5~\unit{day}$ ranges from 0.122 to 0.135, much closer to the range of the
+rejection runs.
+However, the uncertainty of each run is now about 0.002, so the runs still differ by
+more than their uncertainties.
+The fraction of samples below $10~\unit{day}$ also varies as much as with 1000 live
+points (0.315 to 0.349 compared to 0.327 to 0.338 for the rejection runs).
+We use four representative period ranges (below 10, 12.5--15.5, 22.5--25.5, and above
+100 days) to compare the scatter of the fractions around the mean of the rejection runs
+with the scatter expected from the effective sample size.
+With this estimate, a run with 1000 live points returns about 330 independent samples,
+and a run with 10,000 live points returns about 2100 (compared with effective sample
+sizes of about 2200 and 23,000, respectively).
+
+The rejection sampler is much faster for this dataset.
 On a laptop CPU (Apple M4 Max), after \package{JAX} compilation, one rejection run for
 this source takes 1.6~\unit{s} and returns about 9100 independent samples, whereas one
-nested sampling run takes 3.5~\unit{s} and returns weighted samples with an effective
-sample size of about 2200.
+nested sampling run with 1000 live points takes 3.5~\unit{s} and returns weighted
+samples with an effective sample size of about 2200.
 So, \harv's rejection sampler therefore generates about 5700 effective samples per
 second versus about 640 per second for the nested sampling run with 1000 live points.
 But the nested sampling number is too optimistic, because the effective sample size of
-the weights does not include the scatter of the mode probabilities we found above.
-Basd on that scatter, one nested sampling run produces only about 340 independent
-samples, or about 100 independent samples per second.
-To match the precision of one rejection run, we would need about 30 times more live
-points, so the nested sampler would be about 60 times slower than the rejection sampler.
-\todo{audit numbers with new experiment with 10x more live points}
+the weights does not include the scatter of the mode probabilities we found above (see
+previous paragraph).
+With 10,000 live points, one run takes 33~\unit{s} and produces about 2100 independent
+samples, or about 65 per second.
+Even if the number of independent samples grew in proportion to the number of live
+points beyond 10,000, matching the precision of one rejection run would need about
+40,000 live points, and the nested sampler would be about 90 times slower than the
+rejection sampler.
 
 For pipelines that analyze many sources with varied data quality or number of epochs, we
 therefore recommend using the rejection sampler first, and then using nested sampling or
