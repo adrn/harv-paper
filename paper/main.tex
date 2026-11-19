@@ -905,9 +905,7 @@ accompanies this article,\footnote{See the scripts directory in
 \todo{Move the case study notebooks to a top-level case-studies directory?}
 
 %--------------------------------------------------------------------
-\subsection{
-  Case study 1: APOGEE radial velocities for binary-star systems
-}
+\subsection{Case study 1: APOGEE radial velocities for binary-star systems}
 \label{sec:cases-apogee}
 
 This first case study demonstrates the basic functionality of \harv\ and shows the
@@ -1121,9 +1119,8 @@ per-source inferences, as we have done in \citet{Price-Whelan:2020}.
 
 
 %--------------------------------------------------------------------
-\subsection{
-  Case study 2: Modeling Gaia-4 with radial velocities and DR4 epoch astrometry
-}
+\subsection{Case study 2: Modeling Gaia-4 with radial velocities and DR4 epoch
+astrometry}
 \label{sec:cases-gaia4}
 
 \todo{We need to explain how we go from the CCD-level astrometry to the field-of-view transit-level astrometry. That was done in harv/docs/tutorials/data/Gaia-DR4-preview.ipynb}
@@ -1255,16 +1252,15 @@ the recent analysis \citep{Kanodia:2026}, $10.70 \pm 0.32~\unit{\Mjup}$, who use
 same \gaia\ pre-release data but more RV measurements.
 
 %--------------------------------------------------------------------
-\subsection{
-  Case study 3: Connecting \harv\ with other inference tools
-}
+\subsection{Case study 3: Connecting \harv\ with other inference tools (a demo with
+nested sampling)}
 \label{sec:cases-interop}
 
 Because \harv\ builds on top of \package{numpyro} (Section~\ref{sec:methods-interop}),
 which supports extracting functions that evaluate the log density components of a model,
 we can use the same model in other inference tools, outside of \harv\ or
 \package{numpyro} itself.
-In this case study, we run a nested sampler \citep{Skilling:2004, Skilling:2006} on the
+In this case study, we run a nested sampler \citep{Skilling:2004, Skilling:2006} with a
 \harv\ model for four of the \apogee\ sources from Section~\ref{sec:cases-apogee}, and
 compare the results with those from the rejection sampler.
 Nested sampling explores the full prior pdf and returns posterior samples and the
