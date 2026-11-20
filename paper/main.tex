@@ -204,10 +204,9 @@ Here we present \harv: a successor to \joker\ and full re-implementation built o
 \harv\ is faster (see Appendix~\ref{sec:appendix-performance}) and more flexible than
 the original \joker\ implementation, and works with both RVs and \gaia\ epoch astrometry
 (with support for more data types to come).
-Because it is built on \jax, the same model code can be compiled and run on CPUs or
-GPUs, and is differentiable, so can be used in gradient-based MCMC samplers or
-variational inference methods instead of the built-in rejection sampler, when
-appropriate.
+Because it is built on \jax, we can compile and use the same model code to run on CPUs
+or GPUs, and it is differentiable, so can be used in gradient-based MCMC samplers or
+variational inference methods instead of the built-in rejection sampler.
 
 Many packages and methods have been developed to efficiently sample or fit Keplerian
 orbits to data.
