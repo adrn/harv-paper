@@ -11,3 +11,6 @@ wheels/
 
 # This project
 data
+
+# Slurm logs
+logs/
