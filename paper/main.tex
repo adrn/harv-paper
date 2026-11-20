@@ -1550,9 +1550,25 @@ these outcomes.
 
 We model the population as a mixture of binaries and stars with a constant velocity.
 The mixture weight for this model is the binary fraction $f_{\rm bin}$.
-However, the concept of a binary fraction is ill-defined \todo{work in polemic about meaningless ``constrain binary fraction'' statements from note I wrote for Quentin. And try to make it funny/light, a la Gaussian factorization note, not too preachy.}
-\todo{Define binary fraction from the modeling perspective as: star with a companion within some range of period and companion mass}
-\todo{Here and below}
+However, the concept of a binary fraction is ill-defined until we define what we mean by
+a binary.
+Strictly speaking, there are no single stars: every star presumably has planets,
+asteroids, or at least a few dust grains in orbit around it, so the binary fraction of
+any population is 1, which we can report without looking at any data.
+In practice, a binary fraction counts the stars with a companion that is massive enough
+and close enough to matter for some data set, and these thresholds are usually set
+implicitly by the data and the method rather than explicitly stated.
+Two binary fractions measured from different surveys of the same stars can therefore
+both be correct, but disagree.
+So an unqualified ``binary fraction'' is not a measurement of anything in particular.
+Here, we define $f_{\rm bin}$ as the fraction of stars that have a companion with
+properties in some range: period $5 < P < 1000~\unit{day}$ and mass $0.1 < m_2 <
+1~\unit{\Msun}$.
+All other stars count as stars without a companion (as we have defined companion).
+In this toy simulation, every companion is in this range, so we can model the other
+stars as having constant velocity.
+With real data, stars with a companion outside the range would need another component in
+the mixture model.
 The likelihood for the data $\vec{y}_n$ for star $n$ is
 \begin{multline}
   p(\vec{y}_n \given f_{\rm bin}, \vec{\alpha}) = \\
