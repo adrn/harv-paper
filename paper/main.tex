@@ -7,7 +7,7 @@
 \documentclass[twocolumn]{AASTeX7/aastex701}
 
 \shorttitle{\texttt{harv}: fast companion orbit inference}
-\shortauthors{Price-Whelan et al.}
+\shortauthors{Price-Whelan}
 
 \usepackage{preamble/preamble-adrn}
 \usepackage{listings}
@@ -245,7 +245,7 @@ linear parameters.
 Recognizing this structure means that, if we adopt conjugate priors for the linear
 parameters, we can optionally analytically marginalize over the linear parameters to
 reduce the dimensionality of the parameter space we need to sample over.
-We describe this marginalization in more detail in Section~\ref{sec:TODO}.
+We describe this marginalization in more detail in Section~\ref{sec:methods-marginal}.
 
 \subsection{Parameterizations of the models}
 \label{sec:design-parameterizations}
@@ -1933,7 +1933,156 @@ or photometry), but these are not specific to \harv.
 
 \appendix
 
-\section{TODO}
+\section{Marginalizing over linear parameters with truncated prior pdfs}
+\label{apx:truncated}
+
+Here we derive the expressions referenced in Section~\ref{sec:methods-marginal} for the
+marginal likelihood when the prior pdf over one or two of the linear parameters is a
+truncated normal.
+We also describe how we evaluate these expressions in the code, and how we then generate
+posterior samples the linear parameters when they have truncated priors.
+
+\todo{Duplicated equations from the main text - shorten in main text and reference to here.}
+We write a truncated normal prior pdf over parameters $\vec{\beta}$, which may depend on
+other parameters $\vec{\theta}$, as
+\begin{equation}
+  p(\vec{\beta} \given \vec{\theta}) = \frac{1}{Z_{\rm prior}} \,
+    \norm(\vec{\beta} \given \vec{\mu}, \mat{\Lambda}) \, T(\vec{\beta})
+  \quad ,
+\end{equation}
+where $T(\vec{\beta})$ is equal to one when $\vec{\beta}$ is in the allowed domain and
+zero otherwise, and $Z_{\rm prior}$ is the normalization constant that makes the pdf
+integrate to 1 over the allowed domain (so here, $\mathcal{N}(\cdot)$ is the untruncated
+normal pdf).
+The allowed domain, $\mathbb{S}$, is rectangular, so each truncated parameter
+$\beta_{k'}$ is restricted to an interval $(l_k, h_k)$, and is potentially one-sided, in
+which either $l_k$ or $h_k$ may be infinite.
+The other linear parameters $\beta_{k\neq k'}$ are unconstrained.
+The marginal likelihood is the integral of the likelihood times this prior pdf.
+Using the refactorization in Equation~(\ref{eq:refactor}),
+\begin{eqnarray}
+  p(\vec{y} \given \vec{\theta})
+  &=& \frac{1}{Z_{\rm prior}} \int \dd\vec{\beta} \,
+    \norm(\vec{y} \given \mat{X}\,\vec{\beta}, \mat{C}) \,
+    \norm(\vec{\beta} \given \vec{\mu}, \mat{\Lambda}) \, T(\vec{\beta}) \\
+  &=& \frac{1}{Z_{\rm prior}} \,
+    \norm(\vec{y} \given \mat{X}\,\vec{\mu},
+      \mat{C} + \mat{X}\,\mat{\Lambda}\,\transp{\mat{X}})
+    \int_{\mathbb{S}} \dd\vec{\beta} \, \norm(\vec{\beta} \given \vec{a}, \mat{A}) \\
+  &=& \frac{Z_{\rm post}}{Z_{\rm prior}} \,
+    p_{\rm untrunc}(\vec{y} \given \vec{\theta})
+  \quad ,
+\end{eqnarray}
+which is Equation~(\ref{eq:truncated}).
+The second expression follows from the fact that the first Gaussian on the right-hand
+side of Equation~(\ref{eq:refactor}) does not depend on $\vec{\beta}$.
+
+Our prior pdfs over the linear parameters are assumed to be independent, so
+$\mat{\Lambda}$, the linear parameter prior covariance matrix, is diagonal with elements
+$\sigma_k^2$, and $Z_{\rm prior}$ is thereforea product over the truncated parameters,
+\begin{equation}
+  Z_{\rm prior} = \prod_k \left[
+    \Phi\!\left(\frac{h_k - \mu_k}{\sigma_k}\right)
+    - \Phi\!\left(\frac{l_k - \mu_k}{\sigma_k}\right) \right]
+  \quad ,
+\end{equation}
+where $\Phi$ is the standard normal cumulative distribution function (cdf).
+This is valid for any number of truncated parameters.
+
+Unfortunately, in general, the covariance matrix $\mat{A}$ of the conditional posterior
+pdf is not diagonal, so $Z_{\rm post}$ does not factorize like the prior.
+However, it does simplify because the unconstrained parameters are integrated over their
+full domain, and marginalizing a Gaussian over some of its dimensions leaves a Gaussian
+in the remaining dimensions with the corresponding elements of the mean and covariance
+matrix.
+$Z_{\rm post}$ is therefore the integral over the allowed intervals of a Gaussian in
+only the truncated parameters.
+For each truncated parameter, we define the standard deviation of the conditional
+posterior, $\sigma_k = \sqrt{A_{kk}}$, and the standardized bounds
+\begin{equation}
+  \tilde{l}_k = \frac{l_k - a_k}{\sigma_k}
+  \quad , \quad
+  \tilde{h}_k = \frac{h_k - a_k}{\sigma_k}
+  \quad .
+\end{equation}
+With only one truncated parameter,
+$Z_{\rm post} = \Phi(\tilde{h}_k) - \Phi(\tilde{l}_k)$, i.e., a difference of the cdf of
+the standard normal evaluated at the bounds.
+With two truncated parameters, which we label 1 and 2, the Gaussian posterior over only
+the truncated parameters is specified by the standardized bounds and the correlation
+coefficient $\rho = A_{12} / (\sigma_1\,\sigma_2)$.
+The integral over the rectangular truncated domain is then a sum over the four corners,
+\begin{equation}
+  Z_{\rm post} =
+    \Phi_2(\tilde{h}_1, \tilde{h}_2; \rho)
+    - \Phi_2(\tilde{l}_1, \tilde{h}_2; \rho)
+    - \Phi_2(\tilde{h}_1, \tilde{l}_2; \rho)
+    + \Phi_2(\tilde{l}_1, \tilde{l}_2; \rho)
+  \quad ,
+  \label{eq:corners}
+\end{equation}
+where $\Phi_2(u, v; \rho)$ is the cdf of the standard bivariate normal distribution with
+correlation coefficient $\rho$.
+When a bound is infinite the corresponding terms simplify, because
+$\Phi_2(u, v; \rho) = 0$ if either argument is $-\infty$, and
+$\Phi_2(u, +\infty; \rho) = \Phi(u)$.
+
+There is no closed-form expression for $\Phi_2$, but it can be written as
+$\Phi(u)\,\Phi(v)$ plus a one-dimensional integral over the correlation coefficient
+(from 0 to $\rho$) \citep{Plackett:1954}.
+Through a change of variables, substituting $\rho \rightarrow \sin\xi$, we can transform
+the integral into a form that is bounded and smooth for any $\rho$, so we evaluate the
+integral with a fixed Gauss--Legendre quadrature with 64 nodes over the interval $[0,
+\arcsin\rho]$.
+With fixed bounds and number of nodes, we can compile this evaluation with \jax\ and
+autodiff works through this as expected.
+
+There is one subtlety with implementing this approach numerically, which we identified
+by debugging an inconsistent test with Claude Opus 5.5.
+When the truncated domain contains a small fraction of the probability mass of the
+conditional posterior, the four terms in Equation~(\ref{eq:corners}) nearly cancel, so
+the sum loses numerical precision.
+The smaller $Z_{\rm post}$ is, the worse the precision loss.
+When $Z_{\rm post}$ is too small to be distinguished from round-off error in the sum, we
+set $Z_{\rm post} = 0$, so that the marginal likelihood for that sample of the nonlinear
+parameters is clamped to zero.
+This technically under-weights these samples, but the alternative (which led to the bug)
+is that the sum can lead to a value that over-weights the samples, which is worse.
+In practice, this only discards samples whose weights would have been negligible.
+
+When three or more linear parameters are defined with truncated domains, $Z_{\rm post}$
+is an integral of a three or more dimensional Gaussian with a dense covariance matrix
+over a rectangular domain.
+There is no simple expression for this integral, so we do not support this case.
+
+Given a sample of the nonlinear parameters $\vec{\theta}$, we need to generate a sample
+of the linear parameters from the truncated conditional posterior pdf,
+$\norm(\vec{\beta} \given \vec{a}, \mat{A})$.
+With one truncated parameter, we sample its value from a one-dimensional truncated
+normal with mean $a_k$ and variance $\sigma_k^2$, using \package{numpyro}.
+There is no equivalent in \package{numpyro} for two correlated truncated parameters, so
+we draw $\beta_1$ with inverse transform sampling.
+The cdf of the conditional posterior pdf over $\beta_1$ within the truncated domain is
+\begin{equation}
+  F(t) = \frac{1}{Z_{\rm post}} \left[
+    \Phi_2(\tilde{t}, \tilde{h}_2; \rho)
+    - \Phi_2(\tilde{l}_1, \tilde{h}_2; \rho)
+    - \Phi_2(\tilde{t}, \tilde{l}_2; \rho)
+    + \Phi_2(\tilde{l}_1, \tilde{l}_2; \rho) \right]
+  \quad ,
+\end{equation}
+with $\tilde{t} = (t - a_1)/\sigma_1$.
+This is equivalent to Equation~(\ref{eq:corners}) with the upper bound $h_1$ replaced by
+$t$, divided by $Z_{\rm post}$.
+We draw $u$ uniformly between 0 and 1 and solve $F(\beta_1) = u$ with bisection using a
+fixed number of steps (60), which in our tests, resolves $\beta_1$ without numerical
+precision concerns.
+We then draw $\beta_2$ given $\beta_1$ from a one-dimensional truncated normal with mean
+$a_2 + \rho\,\sigma_2\,(\beta_1 - a_1)/\sigma_1$ and variance $\sigma_2^2\,(1 -
+\rho^2)$.
+We sample the unconstrained parameters from their Gaussian pdf conditioned on both of
+the truncated parameters.
+
 
 \section{Performance benchmarks}
 \label{sec:appendix-performance}
