@@ -1,8 +1,6 @@
 % TODO:
 % - A final check with Claude: did we say correct things about the code?
 % - Define $\hat{R}$ at first occurrence and cite Gelman.
-% - Check for G_{\rm max} - do we define that appropriately in 3.2? Is it being used for
-%   both marginal likelihood and evidence? Check that definition and uses are correct.
 
 \documentclass[twocolumn]{AASTeX7/aastex701}
 
@@ -505,6 +503,9 @@ the nonlinear parameters,
 The second factor is the \textit{posterior} pdf of the linear parameters conditioned on
 the nonlinear parameters, and it is a Gaussian with mean $\vec{a}$ and covariance
 $\mat{A}$.
+For brevity, we write the marginal likelihood as $\mathcal{G}(\vec{\theta}) \equiv
+p(\vec{y} \given \vec{\theta})$, and $\mathcal{G}_j = \mathcal{G}(\vec{\theta}_j)$ for a
+particular sample $\vec{\theta}_j$.
 This is the marginalization that underlies \joker\ (see Appendix A of
 \citealt{Price-Whelan:2020}), but for \harv\ we have generalized the implementation to
 support additional columns in the design matrix (see
@@ -677,10 +678,11 @@ The core algorithm that the rejection sampler uses is the same as in \joker\
   \item Generate $J$ samples $\vec{\theta}_j$ from the prior pdf over the nonlinear
     parameters (and over any linear parameters that are explicitly sampled, i.e., not
     marginalized).
-  \item Evaluate the marginal likelihood $G_j = G(\vec{\theta}_j)$ for each sample. \todo{use G notation (not Q, which is now a number above) in the math above}
-  \item Find the maximum value $G_{\rm max}$ across all of the samples.
+  \item Evaluate the marginal likelihood $\mathcal{G}_j = \mathcal{G}(\vec{\theta}_j)$
+  for each sample (see Section~\ref{sec:methods-marginal}).
+  \item Find the maximum value $\mathcal{G}_{\rm max}$ across all of the samples.
   \item For each sample $j$, choose a random number $u_j$ uniformly between 0 and
-    $G_{\rm max}$, and reject the sample if $G_j < u_j$.
+    $\mathcal{G}_{\rm max}$, and reject the sample if $\mathcal{G}_j < u_j$.
   \item For each of the $M$ samples that survive, generate a sample of the linear
     parameters from the conditional posterior pdf,
     $\norm(\vec{\beta} \given \vec{a}_j, \mat{A}_j)$.
@@ -698,8 +700,8 @@ The likelihood evaluations are also embarrassingly parallel, so the method paral
 easily across multiple CPU cores or GPUs.
 We do, however, have to choose the number of prior samples $J$ to generate, and we need
 to pay attention to the number of samples that survive the rejection step, $M$, and we
-may want to check that we have resolved the dominant modes enough that $G_{\rm max}$ is
-a good estimate of the true maximum of the marginal likelihood.
+may want to check that we have resolved the dominant modes enough that $\mathcal{G}_{\rm
+max}$ is a good estimate of the true maximum of the marginal likelihood.
 
 We have implemented a few new features that help make the rejection sampling more
 efficient and robust, or that differ from the default behavior of \joker.
@@ -717,7 +719,7 @@ We therefore optionally replace the fourth step above.
 Instead of rejection, \harv\ can return the $M$ prior samples with the largest marginal
 likelihood values for a fixed $M$, along with their importance weights
 \begin{equation}
-  w_j = \frac{G_j}{\sum_{j'=1}^{J} G_{j'}}
+  w_j = \frac{\mathcal{G}_j}{\sum_{j'=1}^{J} \mathcal{G}_{j'}}
   \quad ,
   \label{eq:weights}
 \end{equation}
@@ -729,13 +731,13 @@ posterior mass that the returned samples contain, so it should be close to one i
 large enough.
 
 
-\subsubsection{Validating the maximum marginal likelihood, $G_{\rm max}$}
+\subsubsection{Validating the maximum marginal likelihood, $\mathcal{G}_{\rm max}$}
 \label{sec:methods-gmax}
 
-When only a few samples survive the rejection step, $G_{\rm max}$ (the threshold used in
-the rejection sampling) is the largest marginal likelihood of the prior samples, but it
-can still be much smaller than the height of the highest peak of the marginal
-likelihood.
+When only a few samples survive the rejection step, $\mathcal{G}_{\rm max}$ (the
+threshold used in the rejection sampling) is the largest marginal likelihood of the
+prior samples, but it can still be much smaller than the height of the highest peak of
+the marginal likelihood.
 Posterior samples that are returned in this regime may therefore not be representative
 of the true posterior pdf, and may not even be in the dominant mode.
 This commonly happens when the data are informative and have a large time baseline,
@@ -749,9 +751,9 @@ issues, because all of the chains start in the same mode.
 We recommend two diagnostic checks if the rejection sampling returns one or only a few
 samples even when the number of prior samples $J$ is large.
 First, rerun the rejection sampling with even more prior samples (e.g., $10J$): if
-$G_{\rm max}$ rises substantially, or the returned samples move to a different mode, the
-first run had not located the dominant mode, and you should use the larger run (or run
-with even more prior samples!).
+$\mathcal{G}_{\rm max}$ rises substantially, or the returned samples move to a different
+mode, the first run had not located the dominant mode, and you should use the larger run
+(or run with even more prior samples!).
 Second, after continuing with MCMC, check the goodness of fit (e.g., $\chi^2$) at the
 maximum a posteriori (MAP) sample.
 With well-calibrated uncertainties, a large $\chi^2$ suggests that either the returned
@@ -778,7 +780,7 @@ of the marginal likelihood over the prior pdf of the nonlinear parameters,
 If we have samples $\vec{\theta}_j$ from the prior pdf, then we can estimate the
 FML as
 \begin{equation}
-  p(\vec{y}) \approx \frac{1}{J} \sum_{j=1}^{J} p(\vec{y} \given \vec{\theta}_j)
+  p(\vec{y}) \approx \frac{1}{J} \sum_{j=1}^{J} \mathcal{G}_j
   \quad .
 \end{equation}
 This is a Monte Carlo estimate of the FML integral that uses all $J$ prior samples, and
@@ -1029,10 +1031,10 @@ size and a marginal Bayes factor.
 For the source with large scatter (2M15035796-4533457), only two of the $10^7$ prior
 samples survive, in different period modes, so we rerun the rejection sampler with
 $10^8$ new prior samples.
-With $10^7$ prior samples, the best sample has $\ln G_{\rm max} = -21.4$ and the two
-samples have periods around $33~\unit{day}$.
-With $10^8$ prior samples, the best sample has $\ln G_{\rm max} = -11.9$ and, again, two
-samples survive, but now with periods around $17~\unit{day}$.
+With $10^7$ prior samples, the best sample has $\ln \mathcal{G}_{\rm max} = -21.4$ and
+the two samples have periods around $33~\unit{day}$.
+With $10^8$ prior samples, the best sample has $\ln \mathcal{G}_{\rm max} = -11.9$ and,
+again, two samples survive, but now with periods around $17~\unit{day}$.
 Even with $10^8$ prior samples, the effective sample size is small, and the samples are
 still sparse, which means that even more prior samples are needed to resolve the modes.
 The evidence estimate is also unreliable, but the Bayes factor is so large
@@ -1065,16 +1067,16 @@ samples for the source with small scatter (2M16022747+2902099), with a large eff
 sample size, but the Bayes factor is moderately large, suggesting that the companion
 model is preferred even if the orbital parameters are not well constrained.
 For the source with large scatter (2M20183197+1953430), only one of the $10^7$ prior
-samples survives, at $P = 55.24~\unit{day}$ with $\ln G_{\rm max} = -312.4$, so we
-rerun the rejection sampling with $10^8$ new prior samples:
+samples survives, at $P = 55.24~\unit{day}$ with $\ln \mathcal{G}_{\rm max} = -312.4$,
+so we rerun the rejection sampling with $10^8$ new prior samples:
 \begin{lstlisting}
 samples = sampler.run(data, key=key,
     n_prior_samples=100_000_000,
     return_evidence_stats=True)
 \end{lstlisting}
 \noindent
-With $10^8$ prior samples, the best sample has $\ln G_{\rm max} = -115.7$ and a period $P
-= 51.29~\unit{day}$.
+With $10^8$ prior samples, the best sample has $\ln \mathcal{G}_{\rm max} = -115.7$ and
+a period $P = 51.29~\unit{day}$.
 At this point, still only one sample survives, so we continue sampling with MCMC.
 For this case, we initialize the No-U-Turn Sampler \citep[NUTS;][]{TODO} implemented in
 \package{numpyro} using the single rejection sample:
@@ -1760,8 +1762,8 @@ needed only the first rejection run took only about 20\% of the total time.
 A second limitation is that when only one or a few samples survive, the sample(s) cannot
 really be trusted.
 They might not even be in the dominant mode of the posterior pdf.
-In other words, $G_{\rm max}$ may be below the highest peak of the marginal likelihood
-(which has not been resolved).
+In other words, $\mathcal{G}_{\rm max}$ may be below the highest peak of the marginal
+likelihood (which has not been resolved).
 We cannot even trust the diagnostics computed from the returned samples to reveal this.
 A single sample is, of course, ``unimodal'' in period, and MCMC chains that all start
 from that sample (especially gradient-based MCMC) will generally converge to the same
