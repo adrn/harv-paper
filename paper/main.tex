@@ -1678,43 +1678,6 @@ and the binaries with poorly constrained orbits.
 In other worsd, we do not have to selects stars by the signal-to-noise of the inferred
 orbital parametes or the detection significance.
 
-\begin{figure*}
-  \centering
-  \includegraphics[width=\textwidth]{figures/cs4-rv-examples.pdf}
-  \caption{
-    Simulated data and posterior samples for one star (each row shows data and results
-    for one star) from each outcome of the sampling procedure in
-    Section~\ref{sec:cases-pop-inf}.
-    \textit{Left:} This panel shows the simulated RV data (black markers), orbits
-    computed from 128 posterior samples (blue lines), and the true orbit (orange line).
-    \textit{Right:} This panel shows a projection of the posterior samples, showing
-    period and eccentricity of all 1024 posterior samples (blue points) over the range
-    of the interim prior.
-    The true values are shown as the larger (orange) markers.
-    The NUTS samples (third row) are in one narrow mode, so we zoom in with an inset
-    panel.
-    \label{fig:pop-rv-examples}
-  }
-\end{figure*}
-
-\begin{figure*}
-  \centering
-  \includegraphics[width=\textwidth]{figures/cs4-population.pdf}
-  \caption{
-    Results from a population inference using all 256 simulated stars
-    (Section~\ref{sec:cases-pop-inf}).
-    \textit{Left:} The posterior pdf of the binary fraction $f_{\rm bin}$, with the true
-    value (vertical dashed line).
-    \textit{Other panels:} The population distributions of $\log_{10} P$, $e$, and
-    $\log_{10} m_2$ for the binaries.
-    The blue lines and bands show the median and the 16th to 84th percentiles at each
-    point over 512 posterior samples of $\vec{\alpha}$.
-    The dashed orange lines show the true distributions.
-    The dotted gray lines show the interim prior.
-    \label{fig:population}
-  }
-\end{figure*}
-
 
 %--------------------------------------------------------------------
 \section{Discussion}
