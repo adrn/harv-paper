@@ -22,6 +22,8 @@ set -euo pipefail
 source ~/.env
 init_env_2026
 
+cd /mnt/home/apricewhelan/work/harv-paper
+
 # One XLA thread pool per rank, sized to its allocation, so ranks don't contend.
 export XLA_FLAGS="--xla_cpu_multi_thread_eigen=false intra_op_parallelism_threads=${SLURM_CPUS_PER_TASK}"
 
