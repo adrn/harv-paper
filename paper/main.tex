@@ -1,6 +1,7 @@
 % TODO:
 % - A final check with Claude: did we say correct things about the code?
 % - Define $\hat{R}$ at first occurrence and cite Gelman.
+% - Check for G_{\rm max} - do we define that appropriately in 3.2?
 
 \documentclass[twocolumn]{AASTeX7/aastex701}
 
@@ -43,27 +44,27 @@
 \begin{abstract}
 Population studies of stellar companions (binary stars, exoplanets, compact objects)
 often start with systems with well-constrained orbits.
-Inferring population statistics from such a sample requires modeling the detection
+Inferring population statistics from such a sample then requires modeling the detection
 efficiency of the orbit-fitting pipeline along with the survey selection function,
 usually through injection/recovery tests.
 An alternative approach is to include every source from the parent sample in the
 population inference.
-This requires generating orbital parameter posterior samples even for sources with
-sparse, noisy, or null signals in the same manner as the well-constrained systems.
-\harv\footnote{\url{https://github.com/adrn/harv}} is an open-source Python
-package that enables posterior sampling with radial velocities (RVs), \gaia\ epoch
-astrometry, or both, across a range of data quality regimes.
+This requires generating posterior samples even for sources with sparse, noisy, or null
+signals in the same manner as the well-constrained systems.
+\harv\footnote{\url{https://github.com/adrn/harv}} is an open-source Python package that
+enables posterior sampling over orbital parameters for radial velocity (RVs), \gaia\
+epoch astrometry, or both kinds of data, across a range of data quality regimes.
 Like its predecessor \joker, \harv\ can sample Keplerian orbit parameters either through
 traditional Markov chain Monte Carlo (MCMC) or via a custom rejection sampler that
 analytically marginalizes over linear parameters in the model to improve efficiency.
 For sparse or uninformative data, the posterior is often highly multimodal, which makes
 MCMC inefficient and unreliable, but the rejection sampler still returns independent
-posterior samples for such cases.
+posterior samples for such cases, which can then be used for hierarchical inference.
 \harv\ is built on \jax, which provides just-in-time compilation, CPU and GPU
 support, and automatic differentiation.
 We demonstrate \harv\ using sparse \apogee\ RVs with multimodal posteriors, the planet
 Gaia-4b (modeling both RV and \gaia\ \dr{4} pre-release astrometry), and demonstrate a
-population inference \todo{sentence when last case study is resolved}.
+population inference with simulated RV data.
 We designed \harv\ to be flexible and fast, and to scale to the millions of sources with
 time-domain data from \gaia\ \dr{4}, \sdssv, and future stellar surveys.
 \end{abstract}
@@ -900,7 +901,7 @@ individual systems to be new astrophysical results.
 The first three case studies use published data, and the last case study uses simulated
 data so that we know the true population parameters.
 Each case study is reproduced by a script or Jupyter notebook in the repository that
-accompanies this article,\footnote{See the scripts directory in
+accompanies this article,\footnote{See the ``scripts'' directory in
 \url{https://github.com/adrn/harv-paper}.} using version \todo{0.x} of \harv.
 \todo{Move the case study notebooks to a top-level case-studies directory?}
 
@@ -1513,6 +1514,43 @@ $0.05~\unit{\Msun}$.
 Figure~\ref{fig:pop-rv-examples} (left column, black markers) shows the simulated RV
 data for four stars from this sample (error bars are plotted, but they are comparable to
 the marker size).
+
+\begin{figure*}
+  \centering
+  \includegraphics[width=\textwidth]{figures/cs4-rv-examples.pdf}
+  \caption{
+    Simulated data and posterior samples for one star (each row shows data and results
+    for one star) from each outcome of the sampling procedure in
+    Section~\ref{sec:cases-pop-inf}.
+    \textit{Left:} This panel shows the simulated RV data (black markers), orbits
+    computed from 128 posterior samples (blue lines), and the true orbit (orange line).
+    \textit{Right:} This panel shows a projection of the posterior samples, showing
+    period and eccentricity of all 1024 posterior samples (blue points) over the range
+    of the interim prior.
+    The true values are shown as the larger (orange) markers.
+    The NUTS samples (third row) are in one narrow mode, so we zoom in with an inset
+    panel.
+    \label{fig:pop-rv-examples}
+  }
+\end{figure*}
+
+\begin{figure*}
+  \centering
+  \includegraphics[width=\textwidth]{figures/cs4-population.pdf}
+  \caption{
+    Results from a population inference using all 256 simulated stars
+    (Section~\ref{sec:cases-pop-inf}).
+    \textit{Left:} The posterior pdf of the binary fraction $f_{\rm bin}$, with the true
+    value (vertical dashed line).
+    \textit{Other panels:} The population distributions of $\log_{10} P$, $e$, and
+    $\log_{10} m_2$ for the binaries.
+    The blue lines and bands show the median and the 16th to 84th percentiles at each
+    point over 512 posterior samples of $\vec{\alpha}$.
+    The dashed orange lines show the true distributions.
+    The dotted gray lines show the interim prior.
+    \label{fig:population}
+  }
+\end{figure*}
 
 For the inference pipeline, we start by running the \harv\ rejection sampler on each
 simulated system.
