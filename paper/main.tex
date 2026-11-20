@@ -1,7 +1,8 @@
 % TODO:
 % - A final check with Claude: did we say correct things about the code?
 % - Define $\hat{R}$ at first occurrence and cite Gelman.
-% - Check for G_{\rm max} - do we define that appropriately in 3.2?
+% - Check for G_{\rm max} - do we define that appropriately in 3.2? Is it being used for
+%   both marginal likelihood and evidence? Check that definition and uses are correct.
 
 \documentclass[twocolumn]{AASTeX7/aastex701}
 
@@ -1683,34 +1684,203 @@ orbital parametes or the detection significance.
 \section{Discussion}
 \label{sec:discussion}
 
-\todo{Write this.}
+We designed \harv\ to be a general-purpose tool for modeling the Keplerian orbits of
+companions around stars, and for using the resulting posterior samples to perform
+population inferences.
+However, the current implementation has some limitations that we discuss here (some of
+which result from our assumptions in Section~\ref{sec:design-assumptions}).
 
-The methods above deliver correct posterior samplings under the assumptions we have
-stated in Section~\ref{sec:methods-assumptions}, but some of these assumptions are not
-valid in practice, and are limitations of the current implementation of \harv.
+\subsection{General limitations and missing functionality}
+\label{sec:discussion-general}
 
-\todo{Limitations to also discuss:}
-\begin{itemize}
-  \item One Keplerian companion per model (no multi-planet, multiple-star systems).
-  \item The RV+Astrometry tie assumes a dark companion. Luminous companions require modeling the flux ratio.
-  \item So far, we only support one-dimensional \gaia\ epoch astrometry. Absolute
-    astrometry (e.g.\ Hipparcos) and relative astrometry from imaging are future work.
-  \item No perspective-acceleration coupling between proper motion and $v_r$.
-\end{itemize}
+For one, \harv\ currently only supports one Keplerian companion per model.
+This means that we cannot generally model multi-planet or multiple-star systems, which
+are fairly common in practice.
+However, we can model these cases if there is a clear separation of timescales between
+the orbits, so that the inner orbit is effectively an unperturbed Keplerian orbit and
+the outer orbit can be treated as a polynomial trend in the data.
 
-Lastly, like \joker, the rejection sampling requires a sampling of the prior pdf that is
-dense compared to the posterior pdf.
-For very informative data this is \textit{very} expensive.
-For example, in Section~\ref{sec:cases-TODO}, for one system, one sample survives out of
-$10^8$ evaluated prior samples, and it is not even guaranteed that this sample is near
-the dominant mode of the posterior pdf.
-In these cases, in our typical pipelines, we rely on MCMC and so we rely on the
-posterior pdf being effectively unimodal near the mode we find.
-We also saw a case in which two samples are found but they are in different period
-modes: Sources with a small number of surviving samples that span multiple period modes
-are the hardest cases to handle.
+A second significant limitation in the current implementation is that we assume the
+companion is dark in several places.
+This is not universally true in the code, as we do support modeling SB2 RV systems in
+which both components are luminous and have their own RVs.
+But \harv\ does not support modeling the flux ratio of a luminous companion for properly
+handling the photocenter motion in the astrometry, and it also currently assumes that
+the RV and astrometry are tied to the same center of mass when jointly modeling RV and
+astrometry data, which is not true when handling luminous companions.
 
-\todo{Any other anecdotes}
+A third limitation in the current version of \harv\ is that we do not yet support
+``perspective acceleration'' in the astrometry, which is important for very nearby or
+fast-moving stars.
+This effect comes from the fact that linear motion in real space is not
+well-approximated as linear in the observed angular velocity components if the angle a
+star subtends on the sky changes significantly over the time baseline of the
+observations.
+
+Lastly, for astrometric data, \harv\ currently only supports one-dimensional \gaia\
+epoch astrometry.
+General astrometric data can also includee relative or absolute astrometry, but these
+are not yet supported.
+
+We plan to build support for all of these missing features in future versions of \harv,
+but they are not yet implemented --- contributions are welcome.
+
+
+\subsection{Limitations of the rejection sampler}
+\label{sec:discussion-rejection}
+
+% The rejection sampler described above (Section~\ref{sec:methods-rejection}) delivers
+% correct orbital parameter posterior samplings under the assumptions we have stated in
+% Section~\ref{sec:design-assumptions} and if the prior pdf is sufficiently densely
+% sammpled compared to the posterior pdf.
+% We have discussed limitations of our assumptions in the previous section, and many
+% subtleties about the rejection sampler have come up in the case studies above
+% (Section~\ref{sec:case-studies}), but here we reiterate possible limitations or issues
+% with the rejection sampler that may arise in real applications.
+
+The main limitation of the rejection sampler approach is computational cost for sources
+with informative data.
+The rejection sampler needs a sampling of the prior pdf that is dense compared to the
+structure of the posterior pdf, and the number of prior samples this takes grows
+exponentially with the information $H$ (Section~\ref{sec:cases-interop}).
+For sparse or noisy data, which is where the rejection sampler is most useful, this is
+cheap.
+In Section~\ref{sec:cases-pop-inf}, 182 of the 256 simulated stars return 1024
+samples from $10^7$ prior samples.
+For informative data, it quickly becomes prohibitive: 2M20183197+1953430
+(Section~\ref{sec:cases-apogee}) has $H \approx 26$, so resolving its posterior pdf
+would take $\sim 10^{11}$ prior samples (with $10^8$ only one sample survives and is not
+guaranteed to be near the dominant mode).
+For a large survey, we therefore expect most of the computing time to go to the minority
+of sources that need follow-up with other methods.
+In Section~\ref{sec:cases-pop-inf}, the 33 stars that needed nested sampling (13\% of
+the sample) took about half of the total computing time, whereas the 182 stars that
+needed only the first rejection run took only about 20\% of the total time.
+
+A second limitation is that when only one or a few samples survive, the sample(s) cannot
+really be trusted.
+They might not even be in the dominant mode of the posterior pdf.
+In other words, $G_{\rm max}$ may be below the highest peak of the marginal likelihood
+(which has not been resolved).
+We cannot even trust the diagnostics computed from the returned samples to reveal this.
+A single sample is, of course, ``unimodal'' in period, and MCMC chains that all start
+from that sample (especially gradient-based MCMC) will generally converge to the same
+mode with good convergence statistics, such as $\hat{R} \approx 1$.
+We saw this already in the case studies.
+For 2M20183197+1953430, we initialized an MCMC run from the single sample of the
+rejection sampling run with $10^7$ prior samples, and this converges to a mode with
+$\chi^2 = 418$ (for 13 visits), whereas the single sample from the run with $10^8$ prior
+samples leads to a mode with $\chi^2 \approx 3$ (Section~\ref{sec:cases-apogee}).
+\todo{Is this comparison still shown above in the case study?}
+We therefore recommend that any automated pipeline that makes follow-up decisions based
+on the number of samples returned by the rejection sampler should also include a
+goodness-of-fit check, such as the $\chi^2$ of the best sample.
+But of course, the validity of this check depends on whether the model is a good
+description of the data (and it may not be, because of limitations in
+Section~\ref{sec:discussion-general}), and that the uncertainties are well calibrated.
+However, these issues are not specific to the rejection sampler, and any pipeline that
+instead tries to do optimization or direct application of MCMC for sources with many
+epochs or high-signal-to-noise data will have the same issues.
+
+The hardest sources are ones where the rejection sampler returns only a few samples, and
+those samples are spread over several period modes (2M15035796-4533457 in
+Section~\ref{sec:cases-apogee}, and 26 of the simulated stars in
+Section~\ref{sec:cases-pop-inf}).
+Within the rejection sampler, the only path forward is to generate and run with more
+prior samples.
+Another possible alternative is to use nested sampling or other methods that can handle
+multimodality, but this is not a simple drop-in replacement and requires tuning the
+settings of the method to ensure that the posterior is well-sampled.
+We saw this in Section~\ref{sec:cases-interop}, where nested sampling with too few live
+points fails to resolve the posterior pdf.
+
+
+\subsection{Limitations of population modeling with per-source samples under an interim prior}
+\label{sec:discussion-population}
+
+The hierarchical model (Equation~\ref{eq:hierarchical}) has a per-source marginalization
+integral that we replace with a Monte Carlo sum over the posterior samples from the
+rejection sampler.
+This is what lets us use every source, but it also means that the population inference
+can depend on the quality of the per-source samples in ways that are not obvious.
+
+First, the interim prior has to be nonzero (i.e., have support) everywhere the
+population model is nonzero, and in practice it also has to put enough probability mass
+in those regions.
+By ``enough,'' we mean that the effective sample size of the weights in
+(Equation~\ref{eq:reweight}) must be large enough to make the Monte Carlo sum in
+Equation~\ref{eq:hierarchical} precise.
+If this is not the case, the population inference can be biased without any warning.
+This is why we choose an interim prior in Section~\ref{sec:cases-pop-inf} that covers a
+broader period range (0.5 to $10^4~\unit{day}$) than the population model (5 to
+$1000~\unit{day}$).
+However, a broad interim prior has a cost, in that many of the posterior samples will
+have effectively zero weight in the population model (and are therefore wasted).
+
+Second, each sum is a Monte Carlo estimate and uses a finite number of samples, so the
+population likelihood is itself noisy, and the amount of noise depends on the number of
+samples and the effective sample size of the weights in each sum.
+The effective sample size is large when the population model is broader than the
+posterior pdf of an individual source.
+The exact number of samples needed depends on the population model, the interim prior,
+and the posterior pdf of each source (and variations of, withing a sample of sources).
+However, some general guidance has been developed in the context of gravitational-wave
+population inference with a similar setup \citep{Essick:2022}, which we summarize here.
+It turns out that what matters most is the noisiness of the log-likelihood difference
+between values of $\vec{\alpha}$ where the posterior pdf of $\vec{\alpha}$ is large.
+Meaning, if the log-likelihood is noisy at some arbitrary value of $\vec{\alpha}$ but
+smooth in the region where the posterior pdf of $\vec{\alpha}$ is largest, then the
+noise does not matter.
+Because the posterior pdf of $\vec{\alpha}$ beomes narrower as the number of sources
+grows, the number of samples we need per source does not grow with the number of
+sources, unless the population model has features that are narrow compared to the
+posterior pdfs of individual sources that are most constraining \citep{Essick:2022}.
+
+In Section~\ref{sec:cases-pop-inf}, we found that the effective sample size of the
+weights evaluated at the true population parameters is below 10 for 100 of the 253 stars
+and 99 of these are stars without a companion.
+This is potentially concerning, but there are some ways to check whether this matters.
+The most direct test is to rerun the population inference with independent sets of
+per-source samples, or with more samples per source, and confirm that the posterior pdf
+over $\vec{\alpha}$ is consistent.
+In the population inference case study above, we decided to keep 1024 samples per
+source, but we could have kept or required more (e.g., all prior samples that survived
+the rejection sampling).
+A cheaper test is recommended in \citet{Essick:2022}, which is to draw pairs of values
+of $\vec{\alpha}$ from the inferred posterior pdf, estimate the Monte Carlo variance of
+the difference in the log-likelihood from the sample variances and covariances of the
+weights from each source, and confirm that it is much smaller than 1.
+This variance is a sum over sources, so it also would tell us which sources need more
+samples.
+Here, those would most likely be the stars without a companion, which are also the
+cheapest to sample, so we should keep many more than 1024 samples for those stars and it
+should not impact the computational cost of the full population inference.
+
+Third, this is perhaps obvious, but the population inference can be biased by issues
+with the per-source samples.
+We have discussed several subtleties of the rejection sampler and follow-up sampling
+procedures above, and issues with the resulting samples can propagate into biases in the
+population inference.
+For example, a source with samples that are stuck in the wrong mode
+(Section~\ref{sec:discussion-rejection}) may enter the population model as a very
+precisely constrained orbit at the wrong parameter location.
+If a small fraction of stars fail in this way, this will not matter much in practice.
+However, these failures are typically not random, as they are more likely for
+informative data with periods that are short compared to the baseline, where the period
+modes are especially narrow.
+So in a large survey they could bias the inferred population systematically.
+
+Finally, as we motivated in the introduction (Section~\ref{sec:introduction}), this
+framework for hierarchical modeling is powerful because it does not require modeling the
+detection efficiency of an orbit-fitting pipeline.
+But, of course, it is still dependent on the selection function of the parent sample.
+For example, an unresolved binary is brighter than a single star of the same primary
+mass, so a magnitude-limited sample will over-represent binaries.
+There are many other subtleties when dealing with modeling systems with a range of
+distances, masses, and luminosities (e.g., when systems are resolved in some cases or
+unresolved in others, or when the companion is luminous enough to affect the astrometry
+or photometry), but these are not specific to \harv.
+
 
 %--------------------------------------------------------------------
 \section{Summary}
