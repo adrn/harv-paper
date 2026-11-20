@@ -1,5 +1,6 @@
 % TODO:
 % - A final check with Claude: did we say correct things about the code?
+% - Define $\hat{R}$ at first occurrence and cite Gelman.
 
 \documentclass[twocolumn]{AASTeX7/aastex701}
 
@@ -29,7 +30,7 @@
 
 \title{
   \texttt{harv}: \\
-  Fast companion orbit inference with radial velocities and \gaia\ epoch astrometry
+  Fast companion orbit inference with radial velocity and \gaia\ epoch astrometry data
 }
 
 \author[orcid=0000-0003-0872-7098]{Adrian M. Price-Whelan}
@@ -585,7 +586,7 @@ truncated to a domain $(l, h)$, then
 \end{align}
 where $\Phi$ is the standard normal cdf.
 When two parameters are truncated, $Z_{\rm post}$ is a sum over the four corners of the
-rectangular domain and we give the relevant expressions in Appendix~\ref{sec:TODO}.
+rectangular domain and we give the relevant expressions in Appendix~\ref{apx:truncated}.
 When more than two parameters are truncated there is no comparably simple expression, so
 we do not currently support this.
 After sampling the nonlinear parameters, we generate samples of the linear
@@ -1477,12 +1478,189 @@ therefore recommend using the rejection sampler first, and then using nested sam
 MCMC only for sources that need follow-up.
 
 %-------------------------------------------------------------------
-\subsection{
-  Case study 4: Population inference with simulated data
-}
+\subsection{Case study 4: Population inference with simulated data}
 \label{sec:cases-pop-inf}
 
-\todo{Write this.}
+The first three case studies focus on analyzing individual sources, or small numbers of
+sources.
+However, the main motivation for \harv\ is to enable population inferences that use all
+sources from a large sample, whether or not its orbit is well constrained
+(Section~\ref{sec:intro}).
+In this case study, we demonstrate this use case by inferring the binary fraction and
+population distributions of period, eccentricity, and companion mass for a simulated
+population.
+Here we use simulated data so we can compare the inferred population with truth.
+
+We simulate RV data for 256 stars, 102 ($\approx 40\%$) of which have a companion, each
+observed between 3--12 times (drawn uniformly) over 8 years with uncertainties of
+$0.5~\unit{km.s^{-1}}$.
+For the binaries, the log period $\log_{10}(P/\unit{day})$ is drawn from a normal
+distribution with mean 5.03 and standard deviation 2.28 \citep{Raghavan:2010}, truncated
+to periods between 5 and $1000~\unit{day}$.
+The eccentricity $e$ is drawn from a normal distribution with mean 0.4 and standard
+deviation 0.15, truncated to $[0, 1]$.
+Finally, the log companion mass $\log_{10}(m_2/\unit{\Msun})$ is drawn from a normal
+distribution with mean $\log_{10} 0.9$ and standard deviation 0.3, truncated to
+companion masses between 0.1 and $1~\unit{\Msun}$.
+The primary masses $m_1$ are drawn from a normal distribution with a mean
+$1~\unit{\Msun}$ and standard deviation 0.3, truncated to $[0.5, 1.5]$.
+These choices are very roughly meant to represent a population of solar-type stars with
+low-mass companions, but we do not attempt to match any particular population in detail.
+We generate the orientation angles for the orbits to be isotropic.
+The resulting velocity semi-amplitudes in the simulated sample vary from $\approx 0.7$
+to $74~\unit{km.s^{-1}}$.
+For each star, we also simulate a measurement of $m_1$ with an uncertainty of
+$0.05~\unit{\Msun}$.
+Figure~\ref{fig:pop-rv-examples} (left column, black markers) shows the simulated RV
+data for four stars from this sample (error bars are plotted, but they are comparable to
+the marker size).
+
+For the inference pipeline, we start by running the \harv\ rejection sampler on each
+simulated system.
+We use the same prior pdf for all sources, which is then the interim prior of the
+hierarchical model below.
+This prior pdf is uniform in $\ln P$ between 0.5 and $10^4~\unit{day}$, a truncated
+normal distribution for $e$ with mean 0.1 and standard deviation 0.4, uniform in the
+angles or phases $\omega$ and $f_0$, $\sigma_{K,0} = 30~\unit{km.s^{-1}}$, and
+$\sigma_{v_0} = 50~\unit{km.s^{-1}}$.
+As in Section~\ref{sec:cases-apogee}, we draw $J = 10^7$ prior samples once and run the
+rejection sampler on every star using these samples; we keep at most 1024 samples per
+star.
+After this stage, 182 of 256 sources return 1024 samples, 40 sources return $\leq3$
+samples, and 34 sources return an intermediate number of samples.
+For stars with fewer than 1024 samples, we follow up the rejection sampling with a few
+different options.
+First, we re-run the rejection sampler with a library of $10^8$ prior samples that we
+again generate once and reuse for all such cases.
+If, after this, a star gets 1024 samples, we save the samples and proceed.
+If instead, after rejection sampling with $10^8$ prior samples, a source still has fewer
+than 1024 samples and all samples are within one period mode, we continue with NUTS
+(again, we run four chains initialized from the rejection samples) and keep 1024 MCMC
+samples if the runs converge with $\hat{R} < 1.2$.
+If a source has fewer than 1024 samples after the larger rejection sampling run and
+samples are spread across multiple period modes, or if the NUTS run leads to $\hat{R}
+\geq 1.2$, we run a nested sampler following Section~\ref{sec:cases-interop} with
+\num{10000} live points and downsample the generated samples until we have 1024.
+After this procedure, all 256 sources have 1024 posterior samples: 182 from the first
+rejection sampling run with $10^7$ prior samples, 11 from the run with $10^8$ prior
+samples, 30 from NUTS, and 33 from nested sampling (26 with samples in several period
+modes and 7 for which NUTS did not converge).
+Figure~\ref{fig:pop-rv-examples} shows the posterior samples for one star from each of
+these outcomes.
+
+We model the population as a mixture of binaries and stars with a constant velocity.
+The mixture weight for this model is the binary fraction $f_{\rm bin}$.
+However, the concept of a binary fraction is ill-defined \todo{work in polemic about meaningless ``constrain binary fraction'' statements from note I wrote for Quentin. And try to make it funny/light, a la Gaussian factorization note, not too preachy.}
+\todo{Define binary fraction from the modeling perspective as: star with a companion within some range of period and companion mass}
+\todo{Here and below}
+The likelihood for the data $\vec{y}_n$ for star $n$ is
+\begin{multline}
+  p(\vec{y}_n \given f_{\rm bin}, \vec{\alpha}) = \\
+    f_{\rm bin}\,\frac{Z_{{\rm int},n}}{M_n} \sum_{k=1}^{M_n} w_{nk}(\vec{\alpha})
+    + (1 - f_{\rm bin})\,Z_{{\rm single},n}
+  \label{eq:pop-mixture}
+\end{multline}
+where the first term is the reweighting sum of Equation~\ref{eq:hierarchical}, each star
+$n$ has $M_n$ samples from the procedure above (here, all $M_n = 1024$ but in general
+they could be different), $Z_{{\rm int},n}$ is the evidence for the binary model under
+the interim prior (from the rejection sampler), the $w_{nk}(\vec{\alpha})$ are the
+weights for each sample (defined below), and $Z_{{\rm single},n}$ is the evidence for
+the constant-velocity model, which we compute as in Section~\ref{sec:cases-apogee}.
+Unlike in Equation~\ref{eq:hierarchical}, the evidences do not cancel here because
+the two terms in the mixture are different models.
+
+For the binaries, the population model is a truncated normal distribution in each of
+$\log_{10} P$ (between 5 and $1000~\unit{day}$), $e$ (between 0 and 1), and $\log_{10}
+m_2$ (between 0.1 and $1~\unit{\Msun}$), so $\vec{\alpha}$ contains the three means and
+three standard deviations, and $f_{\rm bin}$ is the fraction of stars with a companion
+in this range of $P$ and $m_2$.
+Now, the samples are in $(P, e, K)$, but we express the population model in terms of
+$(P, e, m_2)$.
+So, for each sample, we draw $m_1$ from its measurement and $\cos i$ from a
+uniform distribution, solve the binary mass function for $m_2$, and include the Jacobian
+of the transformation from $K$ to $m_2$ in the weight
+\begin{equation}
+  w_{nk}(\vec{\alpha}) =
+    \frac{p(P_{nk}, e_{nk}, m_{2,nk} \given \vec{\alpha})}{p(P_{nk}, e_{nk}, K_{nk})}
+    \left|\pderiv{m_2}{K}\right|_{nk}
+  \quad ,
+\end{equation}
+where the denominator is the interim prior pdf, and $w_{nk} = 0$ outside the range of
+$P$ and $m_2$.
+% The interim prior on $K$ is a zero-mean normal distribution, and we use the symmetry
+% $(K, \omega) \to (-K, \omega + \pi)$ to make all $K$ positive, so the interim pdf of
+% $K$ is twice the normal pdf.
+% The population pdf integrates to 1, so the mean of $w_{nk}$ over samples from the
+% interim prior must be 1 for any $\vec{\alpha}$. As a check, we find that this is the
+% case ($1.003 \pm 0.004$ and $0.995 \pm 0.003$) for $10^6$ samples from the interim
+% prior at two values of $\vec{\alpha}$.
+We sample $f_{\rm bin}$ and $\vec{\alpha}$ with NUTS using uniform priors for all
+parameters.
+
+Equation~\ref{eq:pop-mixture} uses the evidence estimates from the rejection sampler,
+which are not reliable when $J_{\rm eff} \approx 1$ (Section~\ref{sec:cases-interop}).
+However, this does not affect the results here.
+The 23 stars with $J_{\rm eff} < 3$ all have $\ln \mathcal{B} = \ln Z_{\rm int} - \ln
+Z_{\rm single} > 1400$, so the binary term in Equation~\ref{eq:pop-mixture} vastly
+dominates, and $Z_{{\rm int},n}$ is only a constant factor in the likelihood.
+The 159 stars for which the two models are comparable ($|\ln \mathcal{B}| < 5$) all have
+$J_{\rm eff} > 10^5$, and for these the evidence estimates are precise.
+
+Figure~\ref{fig:population} shows the results of the population inference.
+We find that the inferred binary fraction is $f_{\rm bin} = 0.39 \pm 0.03$, compared
+with the true value 0.40.
+We infer that the eccentricity distribution has mean $0.38 \pm 0.03$ and standard
+deviation $0.17 \pm 0.03$ (truth are 0.4 and 0.15), and the distribution of $\log_{10}
+m_2$ has mean $-0.13^{+0.23}_{-0.10}$ and standard deviation $0.26^{+0.13}_{-0.08}$
+(true values $-0.05$ and 0.3).
+The mean and standard deviation of the period distribution are degenerate because the
+true mean is outside the range of $P$, so the truncated distribution is close to an
+exponential in $\log_{10} P$.
+However, the inferred distribution over the range where we have data agrees with the
+true distribution.
+% The effective sample size of the weights at the median $\vec{\alpha}$ is below 10 for
+% 100 of the 253 stars with samples in the range of $P$ and $m_2$.
+All 256 stars enter this inference, including the 154 stars that do not have a companion
+and the binaries with poorly constrained orbits.
+In other worsd, we do not have to selects stars by the signal-to-noise of the inferred
+orbital parametes or the detection significance.
+
+\begin{figure*}
+  \centering
+  \includegraphics[width=\textwidth]{figures/cs4-rv-examples.pdf}
+  \caption{
+    Simulated data and posterior samples for one star (each row shows data and results
+    for one star) from each outcome of the sampling procedure in
+    Section~\ref{sec:cases-pop-inf}.
+    \textit{Left:} This panel shows the simulated RV data (black markers), orbits
+    computed from 128 posterior samples (blue lines), and the true orbit (orange line).
+    \textit{Right:} This panel shows a projection of the posterior samples, showing
+    period and eccentricity of all 1024 posterior samples (blue points) over the range
+    of the interim prior.
+    The true values are shown as the larger (orange) markers.
+    The NUTS samples (third row) are in one narrow mode, so we zoom in with an inset
+    panel.
+    \label{fig:pop-rv-examples}
+  }
+\end{figure*}
+
+\begin{figure*}
+  \centering
+  \includegraphics[width=\textwidth]{figures/cs4-population.pdf}
+  \caption{
+    Results from a population inference using all 256 simulated stars
+    (Section~\ref{sec:cases-pop-inf}).
+    \textit{Left:} The posterior pdf of the binary fraction $f_{\rm bin}$, with the true
+    value (vertical dashed line).
+    \textit{Other panels:} The population distributions of $\log_{10} P$, $e$, and
+    $\log_{10} m_2$ for the binaries.
+    The blue lines and bands show the median and the 16th to 84th percentiles at each
+    point over 512 posterior samples of $\vec{\alpha}$.
+    The dashed orange lines show the true distributions.
+    The dotted gray lines show the interim prior.
+    \label{fig:population}
+  }
+\end{figure*}
 
 
 %--------------------------------------------------------------------
