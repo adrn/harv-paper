@@ -11,9 +11,9 @@
 
 #SBATCH --job-name=cs4-population
 #SBATCH --partition=cca
-#SBATCH --constraint=genoa
+#SBATCH --constraint=rome
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=96
+#SBATCH --ntasks-per-node=128
 #SBATCH --cpus-per-task=1
 #SBATCH --time=12:00:00
 #SBATCH --output=logs/slurm-%j.out
