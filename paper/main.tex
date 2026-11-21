@@ -1,6 +1,8 @@
 % TODO:
 % - A final check with Claude: did we say correct things about the code?
 % - Define $\hat{R}$ at first occurrence and cite Gelman.
+% - Change from f_0 (which can be confused with f) to some other symbol. It's not M_0,
+%   that's an angle, but it's M_0 / (2π) I think.
 
 \documentclass[twocolumn]{AASTeX7/aastex701}
 
@@ -182,15 +184,15 @@ An advantage to rejection sampling is that the returned samples are independent 
 from the posterior, however many modes there are, and we do not need to worry about
 convergence or autocorrelation analysis of chains (as we do with MCMC).
 \joker\ has been used in a number of population studies of stellar companions
-\citep[e.g.,][]{TODO}.
+\citep[e.g.,][]{Giesers:2019, Rosenthal:2021}.
 
 Our anticipation of two contemporary stellar surveys --- \gaia\ \dr{4} and the Milky Way
-Mapper (MWM) program of \sdssv --- has motivated a ground-up redesign and
-re-implementation of the core ideas of \joker.
-\gaia\ \dr{4} \citep{TODO}, which will be released on 2026-12-02, will include a wealth
-of time-series data, including epoch astrometry and radial velocities for tens of
-millions to billions of stars.
-MWM \citep{TODO} is continuing the \apogee\ survey legacy and will provide precise
+Mapper (MWM) program of \sdssv\ \citep{Kollmeier:2026} --- has motivated a ground-up
+redesign and re-implementation of the core ideas of \joker.
+\gaia\ \dr{4}, which will be released on 2026-12-02, will include a wealth of
+time-series data, including epoch astrometry and radial velocities for tens of millions
+to billions of stars.
+MWM is continuing the \apogee\ survey legacy and will provide precise
 multi-epoch RVs for millions of stars, most of which will have only a few visits.
 For many of these sources, we will have both RVs and epoch astrometry, and to make the
 most of the full samples we will need to be able to model the companions of faint and
@@ -200,7 +202,7 @@ able to generate posterior samples efficiently for millions of sources, which is
 prohibitive for the current \joker\ implementation.
 
 Here we present \harv: a successor to \joker\ and full re-implementation built on \jax\
-\citep{Bradbury:2018} and \package{numpyro} \citep{Phan:2019}.
+\citep{Bradbury:2018} and \package{numpyro} \citep{phan2019composable, bingham2019pyro}.
 \harv\ is faster (see Appendix~\ref{sec:appendix-performance}) and more flexible than
 the original \joker\ implementation, and works with both RVs and \gaia\ epoch astrometry
 (with support for more data types to come).
@@ -279,7 +281,7 @@ As another example, for \gaia\ epoch astrometry, the data are one-dimensional
 the two-dimensional sky position onto the scan direction of the satellite over time.
 We model the along-scan position $y_{\rm AL}$ at time $t$ as the sum of the standard
 five-parameter astrometric model and a Keplerian orbit of the photocenter
-\citep[e.g.,][]{Holl:2022}.
+\citep[e.g.,][]{TODO}. \todo{Need a reference here.}
 In terms of the Thiele--Innes constants $(A, B, F, G)$ and the astrometric in-plane
 coordinates $(X, Y)$ of the orbit, the along-scan position is
 \begin{align}
@@ -407,8 +409,8 @@ over them, like the other linear parameters of the Keplerian part of the model.
 Examples of the second kind of extension are either an extra ``jitter'' or ``excess
 variance'' term that is added to the variance of each measurement, or a Gaussian process
 (GP) model for correlated noise in the data.
-We currently support GP models via the \package{tinygp} package \citep{TODO}, which is
-also built on \jax.
+We currently support GP models via the \package{tinygp} package
+\citep{Foreman-Mackey:2026}, which is also built on \jax.
 For both a jitter term and a GP model, the extra parameters of the noise model enter the
 likelihood nonlinearly, so \harv\ cannot analytically marginalize over them.
 
@@ -418,10 +420,10 @@ likelihood nonlinearly, so \harv\ cannot analytically marginalize over them.
 \harv\ models are built on \jax\ \citep{Bradbury:2018}.
 In a break from many packages in the \jax\ ecosystem, we require that all arrays and
 calculations are done in double precision (\texttt{float64}).
-We use \package{numpyro} \citep{Phan:2019} to represent and reason about prior pdfs and
-to run MCMC or other inference methods, \package{equinox} \citep{Kidger:2021} as ...
-pytree dataclasses...., and \package{unxt} \citep{Starkman:TODO} so that data,
-parameters, priors, and samples carry physical units.
+We use \package{numpyro} \citep{phan2019composable} to represent and reason about prior
+pdfs and to run MCMC or other inference methods, \package{equinox} \citep{Kidger:2021}
+as ... pytree dataclasses...., and \package{unxt} \citep{Starkman:TODO} so that data,
+parameters, priors, and samples carry physical units. \todo{finish this}
 When needed, we compute the eccentric anomaly with a port of the Kepler solver from
 \package{orvara} (\citealt{Brandt:2021}; see also \citealt{Raposo-Pulido:2017}).
 The log-probability of a model is a pure function of the parameter values and can be
@@ -880,7 +882,7 @@ companion also transits the host star.
 The transit light curve depends on period, eccentricity, argument of pericenter, and
 phase (as do the RVs), along with parameters that do not appear directly in the RV model
 (the inclination or impact parameter, the radius ratio, and the limb darkening).
-In this case, we could use \package{jaxoplanet} \citep{Hattori:TODO} to compute the
+In this case, we could use \package{jaxoplanet} \citep{jaxoplanet} to compute the
 transit light curve and its log likelihood, and then use \harv\ to compute the marginal
 log likelihood of the RVs.
 We could then construct a joint model that samples the shared orbital parameters and the
@@ -1939,7 +1941,211 @@ or photometry), but these are not specific to \harv.
 \section{Conventions}
 \label{apx:conventions}
 
-\todo{Angle and coordinate conventions.}
+\todo{Check}
+
+Here we summarize the conventions that \harv\ uses for orbital phase, the orientation of
+the orbit, and the signs of the amplitudes in the radial velocity and astrometric
+models.
+We chose these conventions so that a single set of orbital elements $(P, e, f_0, \omega,
+\Omega, i)$ describes both the radial velocity and the astrometric orbit of an observed
+star, so we can jointly model the two data types (e.g., Section~\ref{sec:cases-gaia4}).
+
+Internally, we assume that times have been converted to a solar-system barycentric
+reference frame, and we enforce that all datasets for a given source share a single
+reference time $t_{\rm ref}$ (by default, the mean of all observation times).
+The phase parameter $f_0 \in [0, 1)$ (not to be confused with the true anomaly $f$) is
+the time of pericenter passage relative to the reference time in units of the period,
+$t_{\rm peri} = t_{\rm ref} + f_0\,P$, so the mean anomaly is
+\begin{equation}
+  M(t) = \frac{2\pi}{P}\,(t - t_{\rm ref}) - 2\pi\,f_0
+  \quad ,
+\end{equation}
+and the eccentric anomaly $E$ and true anomaly $f$ follow from Kepler's equation, $M = E
+- e\,\sin E$.
+The mean longitude used by the \texttt{SqrtEccRV} parameterization
+(Table~\ref{tab:parameterizations}) is the value of $\omega + M$ at the reference time,
+$\lambda = \omega - 2\pi\,f_0$.
+
+In the orbital plane, we use Cartesian coordinates $(x', y', z')$ with $x'$ pointing
+toward pericenter, $y'$ orthogonal to $x'$ and ahead in the direction of orbital
+motion, and $z'$ perpendicular to the orbital plane, so that the position of the star
+relative to the barycenter is
+\begin{equation}
+  \vec{r}' =
+  \begin{pmatrix} x' \\ y' \\ z' \end{pmatrix} =
+  r \begin{pmatrix} \cos f \\ \sin f \\ 0 \end{pmatrix} =
+  a \begin{pmatrix} X \\ Y \\ 0 \end{pmatrix}
+  \quad ,
+  \label{eq:conv-orbit}
+\end{equation}
+where $r = a\,(1 - e^2) / (1 + e\,\cos f)$, and $X = x'/a = \cos E - e$ and $Y = y'/a =
+\sqrt{1 - e^2}\,\sin E$ are the dimensionless orbital-plane coordinates that appear in
+Equation~\ref{eq:al-model}.
+
+On the sky, i.e., relative to the tangent plane at a given sky position, we use the same
+coordinate frame as used by \gaia\ \citep{Halbwachs:2023}, in which $x$ points North
+(increasing declination), $y$ points East (increasing right ascension), and $z$ points
+along the line of sight \emph{away} from the observer, so that $z$ is the distance of
+the star behind the system's barycenter.
+Note that this frame is left-handed.
+The two frames are related by a rotation via the standard orbital elements:\footnote{We
+note that the orientation angles are defined such that the argument of pericenter
+$\omega \in [0, 2\pi)$ and is the angle in the orbital plane from the ascending node to
+the pericenter of the \textit{observed star's} orbit about the barycenter, the longitude
+of the ascending node $\Omega \in [0, 2\pi)$ is the position angle of the ascending node
+measured from North (i.e., it is the node at which the star crosses the plane $z=0$
+moving away from the observer $\dot{z} > 0$), and the inclination $i \in [0, \pi]$ is
+the angle between the orbital angular momentum vector and the line of sight (i.e., $i=0$
+is face-on with angular momentum pointing towards the observer and the orbit moves
+counter-clockwise on the sky, $i=\pi/2$ is edge-on, and $i=\pi$ is ``back''-on with
+angular momentum pointing away from the observer and the orbit moves clockwise on the
+sky).} longitude of ascending node, $\Omega$, inclination, $i$, and argument of
+pericenter, $\omega$,
+\begin{equation}
+  \vec{r} =
+  \begin{pmatrix} x \\ y \\ z \end{pmatrix} =
+  \mat{R}\,\vec{r}'
+  \quad ,
+\end{equation}
+where
+\begin{align}
+  \mat{R} &= \mat{R}_z(\Omega)\,\mat{R}_x(i)\,\mat{R}_z(\omega) \\
+  \mat{R}_z(\phi) &=
+    \begin{pmatrix}
+      \cos\phi & -\sin\phi & 0 \\
+      \sin\phi & \cos\phi & 0 \\
+      0 & 0 & 1
+    \end{pmatrix} \quad , \quad
+  \mat{R}_x(\phi) =
+    \begin{pmatrix}
+      1 & 0 & 0 \\
+      0 & \cos\phi & -\sin\phi \\
+      0 & \sin\phi & \cos\phi
+    \end{pmatrix}
+  \quad .
+\end{align}
+Since $z' = 0$, only the first two columns of $\mat{R}$ contribute, and the position of
+the star in the sky frame can also be written using the Thiele--Innes constants
+\citep{TODO}
+\begin{equation}
+  \begin{pmatrix} x \\ y \\ z \end{pmatrix} =
+  \begin{pmatrix} A & F \\ B & G \\ C & H \end{pmatrix}
+  \begin{pmatrix} X \\ Y \end{pmatrix}
+  \quad ,
+  \label{eq:conv-sky}
+\end{equation}
+where the six constants are $a$ times the elements of the first two columns of the
+rotation matrix $\mat{R}$.
+The astrometric Thiele--Innes constants,
+\begin{align}
+  A &= a\,(\cos\omega\,\cos\Omega - \sin\omega\,\sin\Omega\,\cos i) \nonumber \\
+  B &= a\,(\cos\omega\,\sin\Omega + \sin\omega\,\cos\Omega\,\cos i) \nonumber \\
+  F &= -a\,(\sin\omega\,\cos\Omega + \cos\omega\,\sin\Omega\,\cos i) \nonumber \\
+  G &= -a\,(\sin\omega\,\sin\Omega - \cos\omega\,\cos\Omega\,\cos i)
+  \quad ,
+  \label{eq:conv-thiele-innes}
+\end{align}
+are defined to be consistent with the definitions used for \gaia\ DR3
+\citep{Halbwachs:2023} and have the same units as $a$ (e.g., au or mas).
+Recall that $X$ and $Y$ in these expressions are dimensionless positions in the orbital
+plane (Equation~\ref{eq:conv-orbit}).
+The other two constants, $C$ and $H$,
+\begin{equation}
+  C = a\,\sin\omega\,\sin i
+  \quad , \quad
+  H = a\,\cos\omega\,\sin i
+  \quad ,
+\end{equation}
+set the distance of the star behind the system's barycenter,
+\begin{equation}
+  z = C\,X + H\,Y = r\,\sin i\,\sin(\omega + f)
+  \quad .
+  \label{eq:conv-z}
+\end{equation}
+Here $a$ is the semi-major axis of the luminous star's orbit about the barycenter (which
+we call $a_1$ below), which can be expressed in length units (e.g., au) or angular units
+(e.g., mas) depending on the context.
+
+The astrometric model (Equation~\ref{eq:al-model}) is instead written in terms of
+angular offsets on the sky,
+\begin{equation}
+  \Delta\delta = \frac{x}{d}
+  \quad , \quad
+  \Delta\alpha^* = \Delta\alpha\,\cos\delta = \frac{y}{d}
+  \quad ,
+\end{equation}
+relative to some reference position $(\alpha_0, \delta_0)$, and where $d = (1~\unit{au})
+/ \varpi$ is the distance to the system.
+We can therefore write the astrometric model in terms of the Thiele--Innes constants, as
+is common, such that
+\begin{equation}
+  \begin{pmatrix} \Delta\delta \\ \Delta\alpha^* \end{pmatrix} =
+  \frac{1}{d}
+  \begin{pmatrix} A & F \\ B & G \end{pmatrix}
+  \begin{pmatrix} X \\ Y \end{pmatrix}
+  \quad .
+  \label{eq:conv-sky-angular}
+\end{equation}
+If we are modeling the photocenter motion of a luminous star with a dark companion, then
+we would use the semi-major axis of the photocenter orbit, $a_0$, in place of $a$ in
+Equation~\ref{eq:conv-thiele-innes}.
+We note that $\Delta\alpha^*$, the right ascension offset $\alpha_0$, and the proper
+motion $\mu_\alpha$ in Equation~\ref{eq:al-model} all include the factor $\cos\delta$
+(these are often written $\alpha^*_0$ and $\mu_{\alpha^*}$).
+The scan angle $\psi$ in Equation~\ref{eq:al-model} is the position angle of the
+along-scan direction, measured from North through East (as provided by \gaia).
+
+The radial velocity of the star relative to the systemic velocity $v_0$ is the $z$
+component of the velocity, $\dot{z}$, so positive values mean the star is moving away
+from the observer (i.e., redshift).
+If we take the derivative of Equation~\ref{eq:conv-z} with respect to time, we get the
+radial velocity model in Equation~\ref{eq:rv-model},
+\begin{equation}
+  {\rm RV}(t) = K\,[\cos(\omega + f) + e\,\cos\omega] + v_0
+\end{equation}
+with
+\begin{equation}
+  K = \frac{2\pi\,a_1\,\sin i}{P\,\sqrt{1 - e^2}}
+  \quad ,
+  \label{eq:conv-K}
+\end{equation}
+where $a_1$ is the semi-major axis of the observed star's orbit about the barycenter.
+\todo{audit: what is $a_0$ vs $a_1$ and we using them consistently?}
+Again, if the companion is not luminous, the photocenter traces the observed star's
+orbit, so $a_0 / \varpi = a_1 / (1~\unit{au})$, and Equation~\ref{eq:conv-K} becomes
+\begin{equation}
+  K = \frac{2\pi\,\sin i}{P\,\sqrt{1 - e^2}} \, \frac{a_0}{\varpi} \, (1~\unit{au})
+  \quad .
+  \label{eq:conv-tie}
+\end{equation}
+
+\todo{audit $a_0$ vs $a_1$ here as well}
+Finally, we note that for typical runs, the default prior pdfs on $K$ and $a_0$ are
+zero-mean (untruncated) normal distributions, so both amplitudes can take either sign.
+The models have exact symmetries with this sign flip, because the radial velocity model
+is invariant when $(\omega, K) \to (\omega + \pi, -K)$, and the astrometric model is
+invariant when $(\omega, a_0) \to (\omega + \pi, -a_0)$ and $(\Omega, a_0) \to (\Omega +
+\pi, -a_0)$.
+However, for the astrometric model, applying both, $(\omega, \Omega) \to (\omega + \pi,
+\Omega + \pi)$ means that the Thiele--Innes constants are not changed, but it does
+change the sign of $z$ (Equation~\ref{eq:conv-z}) and therefore the radial velocity.
+So, astrometry alone does not provide enough information to determine which of the two
+nodes is the ascending node, which is why astrometric orbit catalogs typically restrict
+$\Omega$ to $[0, \pi)$ \citep[e.g.,][]{Halbwachs:2023}.
+We instead keep $\Omega \in [0, 2\pi)$, because radial velocity data break this
+symmetry.
+In \harv, the returned posterior samples have a method, \texttt{Samples.wrap\_angles()},
+that maps posterior samples to the canonical representation with $K \geq 0$, $a_0 \geq
+0$, and all angles in $[0, 2\pi)$, by first shifting $\omega$ by $\pi$ for samples with
+$K < 0$ (or with $a_0 < 0$, if there are no radial velocity data), and then shifting
+$\Omega$ by $\pi$ for samples where $a_0$ is still negative.
+
+For double-lined (SB2) binaries, by our convention, both components (primary 1 and
+secondary 2) of the system  share $(P, e, f_0, \omega)$, where $\omega$ is the argument
+of pericenter of the primary.
+Since the secondary is on the opposite side of the barycenter, its orbit is technically
+at $\omega + \pi$, but we instead keep the same $\omega$ for both components and force
+$K_2$ to be negative.
 
 
 \section{Marginalizing over linear parameters with truncated prior pdfs}
