@@ -10,8 +10,9 @@ which need more care than the others.
   Joker on simulated RV data, against the number of prior samples $J$ and the
   number of observations $N$. It writes `paper/figures/bench-thejoker.pdf`.
 - `benchmarks-ess.ipynb` measures how the cost of the rejection sampler grows
-  with the signal-to-noise ratio of the data, for the standard RV and Gaia
-  astrometry parameterizations. It writes `paper/figures/bench-ess.pdf`.
+  with the signal-to-noise ratio of the data, for the standard RV
+  parameterization and the standard and Thiele-Innes Gaia astrometry
+  parameterizations. It writes `paper/figures/bench-ess.pdf`.
 
 Both report times for one device: one CPU core or one GPU. We ran them on a
 workstation with an Intel Xeon w5-3435X CPU and an NVIDIA RTX 6000 Ada GPU.
