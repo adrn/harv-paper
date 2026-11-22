@@ -3,6 +3,30 @@
 % - Define $\hat{R}$ at first occurrence and cite Gelman.
 % - Change from f_0 (which can be confused with f) to some other symbol. It's not M_0,
 %   that's an angle, but it's M_0 / (2π) I think.
+% - Move the information argument into Methods. The point that rejection cost grows like
+%   e^H while nested sampling cost grows like H is the paper's most useful conceptual
+%   result, and Section 5.2 relies on it. Right now it first appears inside case study
+%   3. Introduce it in Section 3 and let case study 3 confirm it. It's also worth a line
+%   in the abstract.
+% - Retitle case study 3. It's really "rejection vs. nested sampling"; the interop demo
+%   is about 15 lines. Also limit the nested-sampling conclusions to this implementation
+%   and these settings (the blackjax nested slice sampler). Implementations with
+%   clustering or ellipsoid proposals handle mode weights differently, and someone from
+%   that community will push back.
+% - Consider splitting Sections 2–3 into "Models" (RV and along-scan equations,
+%   parameterizations, extensions) and "Inference". At the moment the model equations
+%   sit under "Software design".
+% - Notation clashes. These land right in the hierarchical bookkeeping, where readers
+%   most need clean notation:
+%     - w means three things: importance weights, population reweighting weights, and
+%       mixture weights.
+%     - M is both the number of survivors and the mean anomaly.
+%     - H is the information, a Thiele–Innes constant, and part of H_ϖ.
+%     - In Appendix B, σ_k is used for both the prior and the conditional-posterior
+%       widths.
+% - One reweighting equation, not three. Eqs. hierarchical, reweight and pop-mixture
+%   state the same estimator with different normalizations. Write it once carefully,
+%   including the top-M weighted case, and refer back to it.
 
 \documentclass[twocolumn]{AASTeX7/aastex701}
 
@@ -220,7 +244,7 @@ For example, for RV data (\texttt{RadVel} \citealt{Fulton:2018}; \texttt{juliet}
 \citealt{Trifonov:2019}; \texttt{exoplanet} \citealt{Foreman-Mackey:2021}), and for
 forward modeling \gaia\ epoch astrometry and the \dr{3} orbit-fitting pipeline
 (\texttt{gaiamock}, \citealt{ElBadry:2024-gaiamock}).
-\todo{check list and fix order}
+\todo{Work in that OFTI in orbitize, diffusive nested sampler in kima, and pigeons.jl in octofitter are all designed to handle multi-modality in posterior.}
 These are designed mainly to characterize individual systems in which a companion has
 been confidently detected, using MCMC or nested sampling.
 The goal of \harv\ is to enable population inferences with large samples of sources.
@@ -1684,6 +1708,8 @@ All 256 stars enter this inference, including the 154 stars that do not have a c
 and the binaries with poorly constrained orbits.
 In other worsd, we do not have to selects stars by the signal-to-noise of the inferred
 orbital parametes or the detection significance.
+
+\todo{Add some statement or disclaimer above that monte carlo sums are correlated because we use the same prior samples for all stars.}
 
 %--------------------------------------------------------------------
 \section{Performance benchmarks}
