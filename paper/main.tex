@@ -27,6 +27,7 @@
 
 \newcommand{\harv}{\package{harv}}
 \newcommand{\joker}{\textsl{The Joker}}
+\newcommand{\targESS}{\ensuremath{J_{\rm eff}^*}}
 
 \begin{document}
 
@@ -203,9 +204,9 @@ prohibitive for the current \joker\ implementation.
 
 Here we present \harv: a successor to \joker\ and full re-implementation built on \jax\
 \citep{Bradbury:2018} and \package{numpyro} \citep{phan2019composable, bingham2019pyro}.
-\harv\ is faster (see Appendix~\ref{sec:appendix-performance}) and more flexible than
-the original \joker\ implementation, and works with both RVs and \gaia\ epoch astrometry
-(with support for more data types to come).
+\harv\ is faster (see Section~\ref{sec:performance}) and more flexible than the original
+\joker\ implementation, and works with both RVs and \gaia\ epoch astrometry (with
+support for more data types to come).
 Because it is built on \jax, we can compile and use the same model code to run on CPUs
 or GPUs, and it is differentiable, so can be used in gradient-based MCMC samplers or
 variational inference methods instead of the built-in rejection sampler.
@@ -1684,6 +1685,250 @@ and the binaries with poorly constrained orbits.
 In other worsd, we do not have to selects stars by the signal-to-noise of the inferred
 orbital parametes or the detection significance.
 
+%--------------------------------------------------------------------
+\section{Performance benchmarks}
+\label{sec:performance}
+
+\todo{Consistent color choices for CPU vs. GPU between both figures.}
+
+Here we compare the speed of the rejection sampler in \harv\ with \joker, and we also
+report some computational cost scaling curves for the rejection sampler as a function of
+the signal-to-noise of the data.
+All of these benchmarks are run in the same environment on a Linux workstation using
+either one core of an Intel Xeon w5-3435X CPU or one NVIDIA RTX 6000 Ada GPU.
+The likelihood evaluations for different prior samples are independent, so with several
+devices the times should divide by the number of devices, modulo overheads for
+distributing tasks and collecting or saving the results.
+
+\subsection{Comparison to \joker}
+
+We time the rejection sampler implemented in of \harv\ (version \todo{release tag})
+versus \joker\ (version 1.3.1) on simulated RV data, using the prior from
+Section~\ref{sec:cases-apogee} in both codes.
+The simulated orbit has $P = 200~\unit{day}$, $e = 0.3$, and $K = 10~\unit{km.s^{-1}}$,
+observed with uncertainties of $0.5~\unit{km.s^{-1}}$ over 3 years (and a variable
+number of observations).
+The cost per prior sample depends on the number of observations $N$ but not on the
+values of the data, so the choices of the simulated orbit and the observation times do
+not affect these benchmarks.
+While both \harv\ and \joker\ can stream cached prior samples from disk, here we only
+benchmark a situation where the full prior samples cache is already in memory.
+For \harv, we report the median time of three calls after the first and we therefore
+neglect \jax\ compilation overheads.
+\joker\ likelihood evluations have no compilation overhead, so we time a single call.
+We also do not include the time to generate the prior samples for each code, which we
+only do once at the start (but even this is much faster in \harv\ than in \joker).
+
+As a first test, before we run the benchmarks, we check that the two rejection samplers
+are consistent.
+We use RV data from the source 2M02323271+3350542 (Section~\ref{sec:cases-apogee}),
+which has three observations, and we run both rejection samplers with $J = 10^6$ prior
+samples.
+We compare the evidence estimates using marginal likelihoods computed for the same prior
+samples in both cases.
+We find for \harv\ $\ln p(\vec{y}) = -8.490 \pm 0.002$ and for \joker\ $-8.487 \pm
+0.002$, which are consistent within the Monte Carlo uncertainty.
+
+Next, we run the benchmarks for different numbers of prior samples $J$ and different
+numbers of observations $N$.
+Figure~\ref{fig:bench-thejoker} shows the total wall time for each code to run the
+rejection sampler given $J$ prior samples (left panel) and $N$ observations (right
+panel).
+On the CPU, the time grows linearly with $J$ for both packages, so the time per prior
+sample is nearly constant for both codes at a given $N=8$.
+On the GPU, there is a fixed overhead of about \todo{13}~\unit{ms} per call that
+dominates the runtime below $J \approx 10^5$, but the wall time approaches linear in $J$
+for larger $J$.
+At $N = 8$ and $J = 10^7$, \joker\ takes \todo{4.2}~\unit{\micro\second} per prior
+sample, and \harv\ takes \todo{1.5}~\unit{\micro\second} on one CPU core and
+\todo{0.014}~\unit{\micro\second} on one GPU, so \harv\ is \todo{2.8} and \todo{310}
+times faster.
+
+So for small numbers of observations per source, \harv\ is modestly faster than \joker\
+on CPU, but the speed-up grows substantially for more observations.
+\todo{Why exactly is \harv\ faster than \joker? doesn't it also construct these matrices? why wouldn't it grow linearly with N?}
+\joker\ forms two $N \times N$ matrices for each prior sample during the rejection step,
+so its cost per sample grows steeper than linearly with $N$.
+The cost per sample of \harv\ grows more slowly with the number of observations,
+apparently below a linear scaling.
+\harv's speed-up relative to \joker\ therefore grows with $N$: at $J = 10^6$ prior
+samples, the factor speed-up is $\approx 1.6$ for $N = 4$ but increases to $\approx43$
+for $N = 128$ on one CPU core.
+Another advantage of \harv\ is that it can run on a GPU, which is much faster than
+either code on a CPU.
+However, for large samples of stars, if you have access to a cluster with many CPU
+cores, it may still be faster to run \harv\ on CPU cores: the relevant consideration
+here is whether the total number of CPU cores divided by the number of GPUs you have
+access to is larger than the speed-up factor of \harv\ on GPU versus CPU (i.e., for the
+typical number of observations per star in your sample).
+
+\begin{figure*}
+  \centering
+  \includegraphics[width=\textwidth]{figures/bench-thejoker.pdf}
+  \caption{
+    Wall time of the rejection sample as a function of the number of prior samples $J$
+    (left, for $N = 8$ observations) and as a function of the number of observations $N$
+    (right, for $J = 10^6$), for \joker\ on one CPU core and \harv\ on one CPU core and
+    on one GPU.
+    In the right panel, the wall time in seconds equals the time per prior sample in
+    microseconds.
+    The vertical arrows mark the speed-up of \harv\ over \joker\ at $J = 10^7$ (left)
+    and $N = 128$ (right).
+    \label{fig:bench-thejoker}
+  }
+\end{figure*}
+
+\subsection{Rejection sampler benchmarks for varied signal-to-noise}
+
+Timing the rejection sampler for different prior sample cache sizes and number of
+observations is useful for understanding the performance of \harv\ in different regimes,
+but in real applications we usually care about the time it takes to return a given
+number of effective samples from the posterior.
+For example, imagine we want to require that we get some number $\targESS$ of effective
+samples from the posterior for each source in a large sample of stars.
+To do this with the rejection sampler (which we may not want to enforce, but let's
+imagine we do for now), we need to draw $J$ prior samples, evaluate the likelihood for
+each, and then compute the effective sample size $J_{\rm eff}$ for each source.
+% In general, $J_{\rm eff}$ is not equal to $\targESS$, so we may need to draw more prior
+% samples to get the desired number of effective samples.
+Once $J$ is large enough to resolve the posterior pdf, $J_{\rm eff}$ grows in proportion
+to $J$, so in this regime the efficiency
+\begin{equation}
+  \epsilon = \frac{J_{\rm eff}}{J}
+\end{equation}
+depends on the data and the prior pdf, but not on $J$.
+Getting $\targESS$ effective samples therefore takes $\targESS/\epsilon$ prior samples,
+or a time
+\begin{equation}
+  t(\targESS) \approx \frac{\targESS}{\epsilon \, R}
+  \quad ,
+\end{equation}
+where $R$ is the number of prior samples evaluated per second.
+$R(N)$ depends on the number of observations, the parameterization, and the device, but
+not on the values of the data.
+The efficiency depends on the data, as we saw above $\epsilon \approx e^{-H}$
+(Section~\ref{sec:cases-interop}), where $H$ is the information over the parameters that
+are sampled (the linear parameters are marginalized and do not contribute).
+
+For informative data, the posterior width in each sampled parameter shrinks like
+$1/{\rm SNR}$, where SNR is the total signal-to-noise ratio of the orbit,
+\begin{equation}
+  {\rm SNR}^2 = \sum_{n=1}^{N} \left(\frac{s_n}{\sigma_n}\right)^2
+  \quad ,
+\end{equation}
+and $s_n$ is the orbital signal at observation $n$ after subtracting the model without a
+companion.
+This is the total SNR over all $N$ observations, not the signal-to-noise ratio of a
+single visit or transit.
+We expect the posterior volume over the $d$ sampled parameters to shrink like ${\rm
+SNR}^{-d}$ when the number of observations is large or when the SNR is high, so we
+expect $\epsilon \propto {\rm SNR}^{-d}$ (asymptotically).
+The number of sampled parameters $d = (4, 7, 4)$ for the three parameterizations we
+consider here: the standard RV parameterization, the standard \gaia\ parameterization,
+and the Thiele--Innes \gaia\ parameterization, respectively (see also
+Table~\ref{tab:parameterizations}).
+% For the standard RV parameterization, $d = 4$ corresponding to ($P$, $e$, phase,
+% $\omega$) and for the standard \gaia\ parameterization, $d = 7$ corresponding to ($P$,
+% $e$, phase, $\omega$, $\Omega$, $\cos i$, $\varpi$) where the parallax $\varpi$ is
+% typically sampled in the rejection sampler because the prior on $a_0$ depends on it (see
+% Section~\ref{sec:methods-priors-nonlinear}).
+% With the Thiele--Innes \gaia\ parameterization, the orientation angles and semi-major
+% axis parameters get absorbed into the four linear T--I constants
+% (Section~\ref{sec:design-parameterizations}), which means that $d = 4$ ($P$, $e$,
+% \todo{phase}, $\varpi$), so the cost of the rejection sampler should scale more like the
+% RV case.
+
+We test the scalings numerically with simulated data.
+We use the prior from Section~\ref{sec:cases-apogee} for RVs and the prior from
+Section~\ref{sec:cases-gaia4} (without jitter) for \gaia\ astrometry.
+For the Thiele--Innes parameterization, we use the same priors, with a Gaussian prior on
+each Thiele--Innes constant that has the same width as the prior on $a_0$.
+We do not apply a Jacobian correction, so the implied prior on $a_0$ and the orientation
+of the orbit differs from the standard one. \todo{shouldn't we apply the Jacobian?}
+We use the same simulated data for both \gaia\ parameterizations.
+For each data type, we use only one set of orbital parameters to simulate: For RVs, we
+use $P = 200~\unit{day}$, $e = 0.3$, and $K = 5~\unit{km.s^{-1}}$ over a baseline of 3
+years, and for \gaia, we use $P = 150~\unit{day}$, $e = 0.2$, and $a_0 = 0.5~\unit{mas}$
+over a baseline of 5 years (with random scan angles and parallax factors).
+For the \gaia\ astrometry, we assume a Sun-like host star with $M=1~\unit{\Msun}$ and $G
+= 13$ (corresponding to $\varpi = 2.16~\unit{mas}$ from the distance modulus with $M_{G}
+= 4.67$ and no extinction).
+The parallax matters for the \gaia\ data because it affects the angular size of the
+orbit and the width of the prior pdf on $a_0$.
+We pick the periods above to be near the logarithmic middle of the period prior and not
+near 1 year, harmonics of 1 year, or the 63-day precession period of the \gaia\ scanning
+law.
+
+For the simulated data, we set the total SNR between 0.3 and 1000 by scaling the
+uncertainties using $N = 3$, 6, and 12 RVs and $N = 40$ and 250 \gaia\ transits.
+We do this for three realizations of the observation times and noise for each.
+For each set of data, we start with $J = 10^6$ prior samples and multiply $J$ by 10
+until $J_{\rm eff} \geq 128$ or $J = 10^8$, and we estimate $\epsilon$ from the last
+run.
+We also compute the expected total SNR for three representative companions on the same
+orbits, but we scale the amplitude to match: an M dwarf ($0.3~\unit{\Msun}$), a brown
+dwarf ($30~\unit{\Mjup}$), and a giant planet ($3~\unit{\Mjup}$), around a
+$1~\unit{\Msun}$ star observed with \apogee-like RVs ($\sigma_v = 0.18~\unit{km.s^{-1}}$
+per visit) or by \gaia\ at $G = 13$ ($\sigma_{\rm AL} = 0.03~\unit{mas}$ per transit).
+\todo{Check $\sigma_{\rm AL}$ at $G = 13$ against the DR4 documentation, including
+whether DR4 epochs are per CCD or per transit.}
+
+Figure~\ref{fig:bench-ess} shows these results.
+Where the data are uninformative (total SNR $\lesssim 1$), $\epsilon \approx 0.3$--0.7,
+so a few thousand prior samples already results in $\targESS = 1024$ effective samples.
+Above that, the cost (i.e. number of prior samples we need) is a steep function of the
+total SNR.
+For the standard \gaia\ parameterization, the curves for $N = 40$ and 250 overlap and
+rise roughly as ${\rm SNR}^7$ above a total SNR of about 2, so $10^8$ prior samples
+resolve the posterior pdf only up to a total SNR of about 6.
+With the Thiele--Innes parameterization, the same number of prior samples reaches a
+total SNR of 20--30.
+For RVs, the $N = 6$ and 12 curves have similar shapes and local slopes around 4 as
+expected.
+
+\todo{edit text down if possible}
+For the representative companions, the giant planet ($3~\unit{\Mjup}$) has a total
+SNR of at most 1.4 in both surveys and needs only a few thousand prior samples.
+The brown dwarf ($30~\unit{\Mjup}$) is at a total SNR of 5--14 with RVs and 4--10 with
+\gaia.
+For RVs this takes at most $3 \times 10^7$ prior samples (0.7~s on one GPU, about
+1~min on one CPU core).
+For $N = 250$ \gaia\ transits, it takes $7 \times 10^6$ prior samples with the
+Thiele--Innes parameterization (2~s on one GPU), but is beyond what $10^8$ prior
+samples resolve with the standard parameterization.
+The M dwarf ($0.3~\unit{\Msun}$) is at a total SNR of 34--120, beyond the reach of the
+rejection sampler in every case except $N = 3$ RVs ($8 \times 10^4$ prior samples).
+At $G \approx 17$, the same star is 6.3 times farther away, so $a_0$ is 6.3 times
+smaller, and with $\sigma_{\rm AL} \approx \todo{0.4}~\unit{mas}$ per transit even the
+M dwarf has a total SNR of at most about 1: the rejection sampler is cheap there, but
+the data barely constrain the orbit.
+For more informative data, nested sampling or MCMC is the better choice
+(Section~\ref{sec:discussion-rejection}).
+
+\begin{figure*}
+  \centering
+  \includegraphics[width=\textwidth]{figures/bench-ess.pdf}
+  \caption{
+    The number of prior samples needed to get $\targESS = 1024$ effective samples from
+    the posterior, as a function of the total SNR of the orbit.
+    The lines show the median and range from three realizations of the simulated data,
+    and we show a few choices for the number of observations $N$.
+    The dashed line is proportional to (total SNR)$^d$.
+    The horizontal gray line shows the largest number of prior samples we consider,
+    which is where $10^8$ prior samples give $J_{\rm eff} < 128$ (so the horizontal line
+    is at $10^8 \times 1024/128$).
+    The right vertical axis gives the time on one GPU at the largest $N$ in each panel.
+    Bars at the top show ranges of the total SNR for the three representative companions
+    described in the text for different numbers of observations.
+    \textit{Left}: The standard RV parameterization, with $d = 4$ sampled parameters.
+    \textit{Middle}: The standard \gaia\ parameterization, with $d = 7$ sampled
+    parameters.
+    \textit{Right}: The Thiele--Innes \gaia\ parameterization, with $d = 4$ sampled
+    parameters.
+    \label{fig:bench-ess}
+  }
+\end{figure*}
+
 
 %--------------------------------------------------------------------
 \section{Discussion}
@@ -1750,7 +1995,7 @@ structure of the posterior pdf, and the number of prior samples this takes grows
 exponentially with the information $H$ (Section~\ref{sec:cases-interop}).
 For informative data, $H$ grows with the logarithm of the signal-to-noise ratio, so the
 cost grows as a power of the signal-to-noise ratio, with an exponent equal to the number
-of sampled parameters (Appendix~\ref{sec:appendix-performance}).
+of sampled parameters (Section~\ref{sec:performance}).
 For sparse or noisy data, which is where the rejection sampler is most useful, this is
 cheap.
 In Section~\ref{sec:cases-pop-inf}, 182 of the 256 simulated stars return 1024
@@ -2300,99 +2545,6 @@ $a_2 + \rho\,\sigma_2\,(\beta_1 - a_1)/\sigma_1$ and variance $\sigma_2^2\,(1 -
 \rho^2)$.
 We sample the unconstrained parameters from their Gaussian pdf conditioned on both of
 the truncated parameters.
-
-
-\section{Performance benchmarks}
-\label{sec:appendix-performance}
-
-\todo{Consistent color choices for CPU vs. GPU between both figures.}
-
-Here we compare the speed of the rejection sampler in \harv\ with \joker, and we also
-report some computational cost scaling curves for the rejection sampler as a function of
-the signal-to-noise of the data.
-All of these benchmarks are run in the same environment on a Linux workstation using
-either one core of an Intel Xeon w5-3435X CPU or one NVIDIA RTX 6000 Ada GPU.
-The likelihood evaluations for different prior samples are independent, so with several
-devices the times should divide by the number of devices, modulo overheads for
-distributing tasks and collecting or saving the results.
-
-\subsection{Comparison to \joker}
-
-We time the rejection sampler implemented in of \harv\ (version \todo{release tag})
-versus \joker\ (version 1.3.1) on simulated RV data, using the prior from
-Section~\ref{sec:cases-apogee} in both codes.
-The simulated orbit has $P = 200~\unit{day}$, $e = 0.3$, and $K = 10~\unit{km.s^{-1}}$,
-observed with uncertainties of $0.5~\unit{km.s^{-1}}$ over 3 years (and a variable
-number of observations).
-The cost per prior sample depends on the number of observations $N$ but not on the
-values of the data, so the choices of the simulated orbit and the observation times do
-not affect these benchmarks.
-While both \harv\ and \joker\ can stream cached prior samples from disk, here we only
-benchmark a situation where the full prior samples cache is already in memory.
-For \harv, we report the median time of three calls after the first and we therefore
-neglect \jax\ compilation overheads.
-\joker\ likelihood evluations have no compilation overhead, so we time a single call.
-We also do not include the time to generate the prior samples for each code, which we
-only do once at the start (but even this is much faster in \harv\ than in \joker).
-
-As a first test, before we run the benchmarks, we check that the two rejection samplers
-are consistent.
-We use RV data from the source 2M02323271+3350542 (Section~\ref{sec:cases-apogee}),
-which has three observations, and we run both rejection samplers with $J = 10^6$ prior
-samples.
-We compare the evidence estimates using marginal likelihoods computed for the same prior
-samples in both cases.
-We find for \harv\ $\ln p(\vec{y}) = -8.490 \pm 0.002$ and for \joker\ $-8.487 \pm
-0.002$, which are consistent within the Monte Carlo uncertainty.
-
-Next, we run the benchmarks for different numbers of prior samples $J$ and different
-numbers of observations $N$.
-Figure~\ref{fig:bench-thejoker} shows the total wall time for each code to run the
-rejection sampler given $J$ prior samples (left panel) and $N$ observations (right
-panel).
-On the CPU, the time grows linearly with $J$ for both packages, so the time per prior
-sample is nearly constant for both codes at a given $N=8$.
-On the GPU, there is a fixed overhead of about \todo{13}~\unit{ms} per call that
-dominates the runtime below $J \approx 10^5$, but the wall time approaches linear in $J$
-for larger $J$.
-At $N = 8$ and $J = 10^7$, \joker\ takes \todo{4.2}~\unit{\micro\second} per prior
-sample, and \harv\ takes \todo{1.5}~\unit{\micro\second} on one CPU core and
-\todo{0.014}~\unit{\micro\second} on one GPU, so \harv\ is \todo{2.8} and \todo{310}
-times faster.
-
-So for small numbers of observations per source, \harv\ is modestly faster than \joker\
-on CPU, but the speed-up grows substantially for more observations.
-\todo{Why exactly is \harv\ faster than \joker? doesn't it also construct these matrices? why wouldn't it grow linearly with N?}
-\joker\ forms two $N \times N$ matrices for each prior sample during the rejection step,
-so its cost per sample grows steeper than linearly with $N$.
-The cost per sample of \harv\ grows more slowly with the number of observations,
-apparently below a linear scaling.
-\harv's speed-up relative to \joker\ therefore grows with $N$: at $J = 10^6$ prior
-samples, the factor speed-up is $\approx 1.6$ for $N = 4$ but increases to $\approx43$
-for $N = 128$ on one CPU core.
-Another advantage of \harv\ is that it can run on a GPU, which is much faster than
-either code on a CPU.
-However, for large samples of stars, if you have access to a cluster with many CPU
-cores, it may still be faster to run \harv\ on CPU cores: the relevant consideration
-here is whether the total number of CPU cores divided by the number of GPUs you have
-access to is larger than the speed-up factor of \harv\ on GPU versus CPU (i.e., for the
-typical number of observations per star in your sample).
-
-\begin{figure*}
-  \centering
-  \includegraphics[width=\textwidth]{figures/bench-thejoker.pdf}
-  \caption{
-    Wall time of the rejection step against the number of prior samples $J$ (left, for
-    $N = 8$ observations) and against $N$ (right, for $J = 10^6$), for \joker\ on one
-    CPU core and \harv\ on one CPU core and on one GPU.
-    In the right panel, the wall time in seconds equals the time per prior sample in
-    microseconds.
-    Arrows mark the speed-up of \harv\ over \joker\ at $J = 10^7$ (left) and $N = 64$
-    (right).
-    \label{fig:bench-thejoker}
-  }
-\end{figure*}
-
 
 
 \bibliographystyle{AASTeX7/aasjournalv7}
