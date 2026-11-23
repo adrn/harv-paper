@@ -1,5 +1,6 @@
 % TODO:
 % - A final check with Claude: did we say correct things about the code?
+% - Is the text too repetitive?
 % - Define $\hat{R}$ at first occurrence and cite Gelman.
 % - Change from f_0 (which can be confused with f) to some other symbol. It's not M_0,
 %   that's an angle, but it's M_0 / (2π) I think.
@@ -69,7 +70,7 @@
 
 \begin{abstract}
 Population studies of stellar companions (binary stars, exoplanets, compact objects)
-often start with systems with well-constrained orbits.
+often use systems with well-constrained orbits. \todo{Bad wording and unclear intent}
 Inferring population statistics from such a sample then requires modeling the detection
 efficiency of the orbit-fitting pipeline along with the survey selection function,
 usually through injection/recovery tests.
@@ -77,20 +78,20 @@ An alternative approach is to include every source from the parent sample in the
 population inference.
 This requires generating posterior samples even for sources with sparse, noisy, or null
 signals in the same manner as the well-constrained systems.
-\harv\footnote{\url{https://github.com/adrn/harv}} is an open-source Python package that
-enables posterior sampling over orbital parameters for radial velocity (RVs), \gaia\
-epoch astrometry, or both kinds of data, across a range of data quality regimes.
+\harv\ is an open-source Python package that enables posterior sampling over orbital
+parameters for radial velocity (RVs), \gaia\ epoch astrometry, or both kinds of data,
+across a range of data quality regimes.
 Like its predecessor \joker, \harv\ can sample Keplerian orbit parameters either through
 traditional Markov chain Monte Carlo (MCMC) or via a custom rejection sampler that
-analytically marginalizes over linear parameters in the model to improve efficiency.
+marginalizes over linear parameters in the model for efficiency.
 For sparse or uninformative data, the posterior is often highly multimodal, which makes
 MCMC inefficient and unreliable, but the rejection sampler still returns independent
-posterior samples for such cases, which can then be used for hierarchical inference.
+posterior samples, which can then be used for hierarchical inference.
 \harv\ is built on \jax, which provides just-in-time compilation, CPU and GPU
 support, and automatic differentiation.
 We demonstrate \harv\ using sparse \apogee\ RVs with multimodal posteriors, the planet
-Gaia-4b (modeling both RV and \gaia\ \dr{4} pre-release astrometry), and demonstrate a
-population inference with simulated RV data.
+Gaia-4b (modeling both RV and \gaia\ \dr{4} pre-release astrometry), and a population
+inference with simulated RV data.
 We designed \harv\ to be flexible and fast, and to scale to the millions of sources with
 time-domain data from \gaia\ \dr{4}, \sdssv, and future stellar surveys.
 \end{abstract}
@@ -112,7 +113,7 @@ Duchene:2013, Moe:2019, Zhu:2021, ElBadry:2024-GaiaBinary}.
 These systems are also important benchmarks for stellar astrophysics
 \citep{Andersen:1991, Torres:2010, Mann:2019}.
 Measuring distributions of companion properties requires time-domain survey data and
-inferences of the orbital parameters of large samples of systems.
+inferences of the orbital parameters for large samples of systems.
 
 Population studies of stellar companions often start by selecting systems with
 well-constrained orbits from larger catalogs.
@@ -126,7 +127,7 @@ cut on the binary model \citep{Halbwachs:2023, GaiaDR3Multiplicity}.
 However, significance cuts often depend on the orbital parameters themselves, so to turn
 a sample defined in this way into a robust population inference, one must  model both
 the parent catalog selection function \textsl{and} the detection efficiency of the
-orbit-fitting-and-selection pipeline, which often requires expensive injection and
+orbit-fitting-and-selection pipeline, which then requires expensive injection and
 recovery tests \citep[e.g.,][]{Cumming:2008, Christiansen:2020, Rosenthal:2021,
 ElBadry:2024-gaiamock}.
 
@@ -162,8 +163,8 @@ but this integral is often not analytically solvable.
 One can instead approximate the integral with Monte Carlo integration by drawing
 posterior samples of the per-system parameters $\vec{\theta}_n$ for each source
 independently under an ``interim'' prior $p(\vec{\theta}_n \given \vec{\alpha}_0)$, and
-then reweighting the samples to the population prior $p(\vec{\theta}_n \given
-\vec{\alpha})$ \citep{Hogg:2010, Foreman-Mackey:2014, Price-Whelan:2020}:
+then reweight the samples to the population prior $p(\vec{\theta}_n \given
+\vec{\alpha})$:
 \begin{equation}
   p(\{D_n\} \given \vec{\alpha}) \approx
     \prod_n \frac{Z_{{\rm int},n}}{K_n}
@@ -175,7 +176,7 @@ then reweighting the samples to the population prior $p(\vec{\theta}_n \given
 \end{equation}
 where $Z_{{\rm int},n}$ is the evidence for the data $D_n$ of source $n$ under the
 interim prior (which we can often ignore if we use the same interim prior for all
-sources).
+sources; see, e.g., \citealt{Hogg:2010, Foreman-Mackey:2014, Price-Whelan:2020}).
 
 In the product in Equation~\ref{eq:hierarchical}, a source with uninformative data would
 contribute samples that follow the interim prior and therefore do not constrain
@@ -183,60 +184,64 @@ $\vec{\alpha}$ (or do so weakly), but importantly the source still contributes t
 product.
 In this framework, we do not need to make a decision about whether a source passes some
 detection threshold, and therefore we do not need to model the detection efficiency of
-our orbit fitting method (and therefore we do not need to do injection and recovery
-tests).
+our orbit fitting method, which simplifies that aspect of the modeling.
 The challenge (and computational cost) here instead is that we must generate posterior
 samples of the orbital parameters $\vec{\theta}_n$ for every source in the parent
-catalog, including sources with sparse or noisy data, or apparently null signals.
+catalog, including sources with sparse or noisy data, or null signals.
 This is a challenge for Keplerian orbit fitting: with only a few radial velocity
 measurements, or astrometry at low signal-to-noise, the per-source likelihood as a
 function of period can have many narrow modes separated by wide regions of low
 probability \citep[e.g.,][]{Price-Whelan:2017}.
-Markov chain Monte Carlo (MCMC) methods struggle in this regime.
+Markov chain Monte Carlo (MCMC) and most sampling methods struggle in this regime.
 
-We previously developed \joker\ \citep{Price-Whelan:2017} for this regime with RV data
-from the Apache Point Observatory Galactic Evolution Experiment (\apogee) in mind, which
-often has only a few (but precisely measured) RV measurements for hundreds of thousands
-of stars.
+We previously developed \joker\ \citep{Price-Whelan:2017} for this problem, and we had
+RV data from the Apache Point Observatory Galactic Evolution Experiment (\apogee;
+\citealt{Majewski:2017}) in mind: \apogee\ often has only a few (but precisely measured)
+RV measurements for hundreds of thousands of stars.
 \joker\ is a custom rejection sampler that can generate independent posterior samples of
-Keplerian orbital parameters for a single source even when the posterior is highly
-multimodal.
-The trick we use to make rejection sampling tractable is that we analytically
-marginalize over the linear parameters in the Keplerian model (the velocity
-semi-amplitude, systemic velocity, and sometimes extra polynomial trend parameters) to
-reduce the dimensionality of the parameter space that we need to sample over.
-An advantage to rejection sampling is that the returned samples are independent draws
-from the posterior, however many modes there are, and we do not need to worry about
-convergence or autocorrelation analysis of chains (as we do with MCMC).
+Keplerian orbital parameters for a source even when the posterior is highly multimodal.
+Rejection sampling is a brute-force method that draws samples from a proposal
+distribution and then accepts or rejects them based on the ratio of the target pdf to
+the proposal pdf.
+It is often considered impractical because it scales poorly with the dimensionality of
+the parameter space.
+With \joker, we make the problem tractable by analytically marginalizing over the linear
+parameters in the Keplerian model (the velocity semi-amplitude, systemic velocity, and
+sometimes extra polynomial trend parameters) to reduce the dimensionality of the
+parameter space that we need to sample over.
+An advantage to rejection sampling here is that the returned samples are independent
+draws from the posterior, however many modes there are, and we do not need to worry
+about convergence or autocorrelation analysis of chains (as we do with MCMC;
+\citealt{TODOmcmcreview}).
 \joker\ has been used in a number of population studies of stellar companions
-\citep[e.g.,][]{Giesers:2019, Rosenthal:2021}.
+\citep[e.g.,][]{Giesers:2019, Price-Whelan:2020, Rosenthal:2021}.
 
 Our anticipation of two contemporary stellar surveys --- \gaia\ \dr{4} and the Milky Way
 Mapper (MWM) program of \sdssv\ \citep{Kollmeier:2026} --- has motivated a ground-up
 redesign and re-implementation of the core ideas of \joker.
 \gaia\ \dr{4}, which will be released on 2026-12-02, will include a wealth of
-time-series data, including epoch astrometry and radial velocities for tens of millions
-to billions of stars.
-MWM is continuing the \apogee\ survey legacy and will provide precise
-multi-epoch RVs for millions of stars, most of which will have only a few visits.
+time-series data, including usable (for companion inference) epoch astrometry and radial
+velocities for tens to hundreds of millions of stars.
+MWM is continuing a stellar survey with the \apogee\ spectrograph and will provide
+precise multi-epoch RVs for millions of stars, most of which will have only a few
+visits.
 For many of these sources, we will have both RVs and epoch astrometry, and to make the
 most of the full samples we will need to be able to model the companions of faint and
 therefore low signal-to-noise host stars.
-Also, the data volumes expected from these surveys are immense, and we will need to be
-able to generate posterior samples efficiently for millions of sources, which is
-prohibitive for the current \joker\ implementation.
+The data volumes expected from these surveys are immense, and we will need to be able to
+generate posterior samples efficiently for millions of sources, which is prohibitive for
+the current \joker\ implementation.
 
 Here we present \harv: a successor to \joker\ and full re-implementation built on \jax\
 \citep{Bradbury:2018} and \package{numpyro} \citep{phan2019composable, bingham2019pyro}.
 \harv\ is faster (see Section~\ref{sec:performance}) and more flexible than the original
 \joker\ implementation, and works with both RVs and \gaia\ epoch astrometry (with
 support for more data types to come).
-Because it is built on \jax, we can compile and use the same model code to run on CPUs
-or GPUs, and it is differentiable, so can be used in gradient-based MCMC samplers or
+Because it is built on \jax, we can compile and use the same model code on CPUs or GPUs,
+and it is differentiable, so it can be used in gradient-based MCMC samplers or
 variational inference methods instead of the built-in rejection sampler.
 
-Many packages and methods have been developed to efficiently sample or fit Keplerian
-orbits to data.
+Many packages and methods have been developed to sample or fit Keplerian orbits to data.
 For example, for RV data (\texttt{RadVel} \citealt{Fulton:2018}; \texttt{juliet}
 \citealt{Espinoza:2019}), for astrometry and combinations of data (\texttt{orvara}
 \citealt{Brandt:2021}; \texttt{orbitize!} \citealt{Blunt:2020}; \texttt{Octofitter}
@@ -244,9 +249,9 @@ For example, for RV data (\texttt{RadVel} \citealt{Fulton:2018}; \texttt{juliet}
 \citealt{Trifonov:2019}; \texttt{exoplanet} \citealt{Foreman-Mackey:2021}), and for
 forward modeling \gaia\ epoch astrometry and the \dr{3} orbit-fitting pipeline
 (\texttt{gaiamock}, \citealt{ElBadry:2024-gaiamock}).
-\todo{Work in that OFTI in orbitize, diffusive nested sampler in kima, and pigeons.jl in octofitter are all designed to handle multi-modality in posterior.}
-These are designed mainly to characterize individual systems in which a companion has
-been confidently detected, using MCMC or nested sampling.
+Most of these packages are designed mainly to characterize individual systems in which a
+companion has been confidently detected, using MCMC or nested sampling.
+\todo{Work in that OFTI in orbitize, diffusive nested sampler in kima, and pigeons.jl in octofitter are all designed to handle multi-modality in posterior and used in population studies - cite Will Thompsons's recent papers.}
 The goal of \harv\ is to enable population inferences with large samples of sources.
 
 
@@ -256,9 +261,9 @@ The goal of \harv\ is to enable population inferences with large samples of sour
 
 \harv\ is designed to generate posterior samplings over the orbital parameters for
 two-body systems.
-Much of the design of \harv\ is guided by a common property of data for such systems:
-the model prediction for the observed data is a nonlinear function of some of the
-parameters and a linear function of the others.
+Much of the design of \harv\ is informed by the fact that, for such systems, the model
+prediction for the observed data is a nonlinear function of some of the parameters and a
+linear function of the others.
 That is, for a source with $N$ measurements $\vec{y}$, we can write the prediction as
 \begin{equation}
   \vec{y} = \mat{X}(\vec{\theta})\,\vec{\beta} + \mathrm{noise}
@@ -267,9 +272,9 @@ That is, for a source with $N$ measurements $\vec{y}$, we can write the predicti
 where the $N \times Q$ design matrix $\mat{X}$ is, in general, a function of the
 nonlinear parameters $\vec{\theta}$ and $\vec{\beta}$ is a length-$Q$ vector of the
 linear parameters.
-Recognizing this structure means that, if we adopt conjugate priors for the linear
-parameters, we can optionally analytically marginalize over the linear parameters to
-reduce the dimensionality of the parameter space we need to sample over.
+The implication of this structure is that, if we adopt conjugate priors for the linear
+parameters, we can analytically marginalize over the linear parameters to reduce the
+dimensionality of the parameter space we need to sample over.
 We describe this marginalization in more detail in Section~\ref{sec:methods-marginal}.
 
 \subsection{Parameterizations of the models}
@@ -278,7 +283,7 @@ We describe this marginalization in more detail in Section~\ref{sec:methods-marg
 We have also designed \harv\ to be flexible in the parameterization of the models that
 predict the data.
 For example, for radial velocity data, the standard parameterization of the Keplerian
-model is
+model in \harv\ is
 \begin{equation}
   v(t) = v_0 + K\,[\cos(\omega + f(t \,;\, P, e, f_0)) + e\,\cos\omega]
   \quad ,
@@ -295,7 +300,8 @@ This is implemented in \harv\ as the \texttt{StandardRV} parameterization class.
 But we also support alternate parameterizations of the Keplerian model.
 For example, \harv\ supports a Fourier series representation of the Keplerian model,
 which is linear in all parameters (coefficients) except the period, and is implemented
-as the \texttt{FourierRV} parameterization class, among others.
+as the \texttt{FourierRV} parameterization class, among others (see
+Table~\ref{tab:parameterizations}).
 In the code, a parameterization is what specifies the names and units of the parameters
 of a model, which parameters are linear, how the design matrix is computed from the
 nonlinear parameters, and a default prior probability density function (pdf) for all
@@ -306,9 +312,10 @@ As another example, for \gaia\ epoch astrometry, the data are one-dimensional
 the two-dimensional sky position onto the scan direction of the satellite over time.
 We model the along-scan position $y_{\rm AL}$ at time $t$ as the sum of the standard
 five-parameter astrometric model and a Keplerian orbit of the photocenter
-\citep[e.g.,][]{TODO}. \todo{Need a reference here.}
+\citep[e.g.,][]{TODO}. \todo{Need a reference here. Is it Holl+2022?}
 In terms of the Thiele--Innes constants $(A, B, F, G)$ and the astrometric in-plane
-coordinates $(X, Y)$ of the orbit, the along-scan position is
+coordinates $(X, Y)$ of the orbit (see Appendix~\ref{apx:conventions}), the along-scan
+position is
 \begin{align}
   y_{\rm AL}(t) =
     &\left[\alpha_0 + \mu_\alpha\,\Delta t + B\,X + G\,Y\right] \, \sin\psi \nonumber \\
@@ -317,18 +324,22 @@ coordinates $(X, Y)$ of the orbit, the along-scan position is
   \quad ,
   \label{eq:al-model}
 \end{align}
-where $(\alpha_0, \delta_0)$ are offsets in position at the reference time,
+where $(\alpha_0, \delta_0)$ are offsets in position at the reference time \todo{or are
+the a reference position at the reference time?},
 $(\mu_\alpha, \mu_\delta)$ are the proper motion components, $\varpi$ is the parallax,
 $\Delta t = t - t_{\rm ref}$, and $\psi$ and $H_\varpi$ are the scan angle and the
 along-scan parallax factor of the transit (provided as metadata).
-The orbit enters through the astrometric coordinates $X = \cos E - e$ and $Y = \sqrt{1 -
-e^2}\,\sin E$, where $E$ is the eccentric anomaly, and through the Thiele--Innes
-constants $(A, B, F, G)$, which include the angular semi-major axis of the photocenter
-orbit, $a_0$, multiplied by functions of $\omega$, the longitude of the ascending node
-$\Omega$, and the inclination $i$ (i.e. the orientation angles of the orbit).
-The prediction is linear in the five astrometric parameters.
-At fixed orientation of the orbit $(\omega, \Omega, i)$, it is also linear in the angular
-semi-major axis $a_0$, and it is linear in the Thiele--Innes constants themselves.
+The orbit enters through the astrometric coordinates $(X, Y)$
+(Equation~\ref{eq:conv-orbit}) and through the Thiele--Innes constants $(A, B, F, G)$
+(Equation~\ref{eq:conv-thiele-innes}), which include the angular semi-major axis of the
+photocenter orbit, $a_0$, multiplied by functions of $\omega$, the longitude of the
+ascending node $\Omega$, and the inclination $i$ (i.e. the orientation angles of the
+orbit).
+The prediction is linear in the five astrometric parameters ($\alpha_0$, $\delta_0$,
+$\mu_\alpha$, $\mu_\delta$, $\varpi$).
+At fixed orientation of the orbit $(\omega, \Omega, i)$, it is also linear in the
+angular semi-major axis $a_0$, and it is linear in the Thiele--Innes constants
+themselves.
 We therefore support both options: a parameterization class that uses the Thiele--Innes
 constants as linear parameters, \texttt{ThieleInnesGaiaAstrometry}, and a
 parameterization class that uses the orientation angles and angular semi-major axis as
@@ -340,11 +351,10 @@ given in Appendix~\ref{apx:conventions}.
 The parameterization classes determine what parameters are considered linear and
 nonlinear, and how the model prediction is computed for a given set of parameters.
 Table~\ref{tab:parameterizations} lists the parameterizations that are currently
-implemented.
-It is then up to the user to choose prior pdfs for
-the parameters, which then determine whether the linear parameters can be marginalized
-over or not, and to choose the inference method (rejection sampling, MCMC, etc.) to use
-for posterior sampling.
+supported.
+It is then up to the user to choose prior pdfs for the parameters, which then determine
+whether the linear parameters can be marginalized over or not, and to choose the
+inference method (rejection sampling, MCMC, etc.) to use for posterior sampling.
 This design is flexible and customizable and allows for a separation of concerns in
 \harv: the user can define a custom parameterization class for a given data format that
 implements the model prediction for the data, and then use the rest of the machinery to
@@ -399,8 +409,11 @@ As with any statistical model, we make a number of assumptions in \harv\ about t
 and the underlying physical systems we are modeling.
 For this version of \harv, we assume:
 \begin{enumerate}
-  \item that each source has exactly one companion and that the motion is well described
-  by the two-body problem,
+  \item that each source has one companion and that the motion is well described by the
+  two-body problem,\footnote{Our assumption is actually slightly weaker, as we do
+  support polynomial trends in the model, which can absorb the acceleration from a
+  long-period outer companion to an inner companion that is the target of the main
+  model. See Section~\ref{sec:design-extensions}.}
   \item that the measurement times are known and specified in a barycentric reference
   frame,
   \item and that the noise is Gaussian with known variances, possibly inflated by
@@ -446,14 +459,17 @@ likelihood nonlinearly, so \harv\ cannot analytically marginalize over them.
 In a break from many packages in the \jax\ ecosystem, we require that all arrays and
 calculations are done in double precision (\texttt{float64}).
 We use \package{numpyro} \citep{phan2019composable} to represent and reason about prior
-pdfs and to run MCMC or other inference methods, \package{equinox} \citep{Kidger:2021}
-as ... pytree dataclasses...., and \package{unxt} \citep{Starkman:TODO} so that data,
-parameters, priors, and samples carry physical units. \todo{finish this}
-When needed, we compute the eccentric anomaly with a port of the Kepler solver from
-\package{orvara} (\citealt{Brandt:2021}; see also \citealt{Raposo-Pulido:2017}).
+pdfs and to run MCMC or other inference methods, \todo{\package{equinox}
+\citep{Kidger:2021} as ... pytree dataclasses...., and \package{unxt}
+\citep{Starkman:TODO} so that data, parameters, priors, and samples carry physical
+units.}
+When needed, we compute the eccentric anomaly with a \jax-compatible implementation of
+the Kepler solver from \package{orvara} \citep{Brandt:2021, Raposo-Pulido:2017}.
 The log-probability of a model is a pure function of the parameter values and can be
 extracted from the \package{numpyro} model, so it can also be passed to other libraries
-in the \jax\ ecosystem; we show an example of this in Section~\ref{sec:cases-interop}.
+in the \jax\ ecosystem; we show an example of this in Section~\ref{sec:cases-interop}
+where we demonstrate using \harv\ with \package{blackjax} \citep{blackjax} to run a
+nested sampling with a \harv\ model.
 
 
 %--------------------------------------------------------------------
@@ -482,11 +498,11 @@ Keplerian motion.
 We assume that the data are Gaussian distributed around the model prediction with
 covariance matrix $\mat{C}$, and that we know the measurement times $\vec{t} = t_n$
 exactly in a barycentric reference frame.
-The data covariance matrix may be diagonal and fixed, if the observations are
-independent and the uncertainties are known, or it may include terms that depend on
-parameters of the model, such as a jitter (white noise) term $s^2\,\identity$ with
-$\identity$ as the $N \times N$ identity matrix, or a Gaussian process model for
-correlated noise $\mat{\Sigma}_\mathrm{GP}$.
+The data covariance matrix may be diagonal and fixed if the observations are independent
+and the uncertainties are known, or it may include terms that depend on parameters of
+the model, such as a jitter (white noise) term $s^2\,\identity$ with $\identity$ as the
+$N \times N$ identity matrix, or a Gaussian process model for correlated noise
+$\mat{\Sigma}_\mathrm{GP}$.
 The model prediction is a linear function of some parameters $\vec{\beta}$ and a
 nonlinear function of the remaining parameters $\vec{\theta}$, as in
 Equation~\ref{eq:linear-model}, where $\mat{X}(\vec{\theta})$ is the $N \times Q$ design
@@ -500,7 +516,8 @@ If the prior pdf over the linear parameters is also Gaussian (and potentially de
 on the nonlinear parameters $\vec{\theta}$),
 \begin{equation}
   p(\vec{\beta} \given \vec{\theta}) =
-    \norm(\vec{\beta} \given \vec{\mu}, \mat{\Lambda}) \quad ,
+    \norm(\vec{\beta} \given \vec{\mu}(\vec{\theta}), \mat{\Lambda}(\vec{\theta}))
+    \quad ,
 \end{equation}
 then we can refactor the product of the likelihood and this prior into a product of two
 different Gaussians \citep{Hogg:2020},
@@ -549,18 +566,17 @@ conjugate to the likelihood, which here means the prior pdf must be a normal
 distribution, or, new to \harv, a truncated normal distribution, or a mixture of these
 (see below).
 In code, if a user specifies a prior pdf for a linear parameter that is not a normal,
-truncated normal, or normal-mixture distribution, then \harv\ samples that linear
-parameter explicitly along with the nonlinear parameters.
+truncated normal, or normal-mixture distribution, this is allowed, but then \harv\
+samples that linear parameter explicitly along with the nonlinear parameters.
 
-Often, however, an unconstrained Gaussian prior pdf is not appropriate for some
-parameters.
-Some linear parameters may have physical constraints on their allowed values (e.g., a
-true parallax must be positive, or in a double-lined ``SB2'' binary, the two stars must
-have opposite signs of the velocity semi-amplitude).
-For these cases we support truncated normal prior pdfs --- that is, a normal
-distribution that is zero outside an allowed domain $\mathbb{S}$ (a lower bound, an
-upper bound, or both, for each truncated parameter) and normalized over $\mathbb{S}$.
-We can still marginalize analytically, because the truncation does not change the
+We support truncated normal distributions because some parameters may have physical
+constraints on their allowed values.
+For example, a true parallax must be positive, or in a double-lined ``SB2'' binary, the
+two stars must have opposite signs of the velocity semi-amplitude.
+For these cases we support marginalization over truncated normal prior pdfs --- that is,
+a normal distribution that is zero outside an allowed domain $\mathbb{S}$ (a lower
+bound, an upper bound, or both, for each truncated parameter).
+We can still marginalize analytically because the truncation does not change the
 refactorization in Equation~(\ref{eq:refactor}); it only restricts the domain of the
 integral over $\vec{\beta}$ to $\mathbb{S}$.
 The first term on the right-hand side of Equation~(\ref{eq:refactor}) does not depend on
@@ -585,26 +601,27 @@ the untruncated prior, and
 \end{align}
 are the integrals of the untruncated prior pdf and of the untruncated conditional
 posterior pdf over the domain $\mathbb{S}$.
-So, the new marginal likelihood is the untruncated marginal likelihood, multiplied by
-the fraction of the conditional \textit{posterior} that sits in the domain $\mathbb{S}$,
-and divided by the fraction of the \textit{prior} that sits in the domain $\mathbb{S}$.
+% So, the new marginal likelihood is the untruncated marginal likelihood, multiplied by
+% the fraction of the conditional \textit{posterior} that sits in the domain $\mathbb{S}$,
+% and divided by the fraction of the \textit{prior} that sits in the domain $\mathbb{S}$.
 
-We often have independent prior pdfs over the linear parametesr, which means that
+We often have independent prior pdfs over the linear parameters, which means that
 $\mat{\Lambda}$ is diagonal, so the integral for $Z_{\rm prior}$ in
 Equation~\ref{eq:truncated-Zprior} is just a product of one-dimensional integrals
 that can be evaluated straightforwardly using the normal cumulative distribution
 function (cdf).
-The conditional posterior pdf, however, is not generally independent, and this is what
-makes the marginalization over truncated parameters tricky.
+The conditional posterior pdf (Equation~\ref{eq:truncated-Zpost}), however, is not
+generally independent, and this is what makes the marginalization over truncated
+parameters tricky.
 The linear parameters are covariant in the conditional posterior pdf because of the term
 $\transp{\mat{X}}\,\mat{C}^{-1}\,\mat{X}$ in $\mat{A}^{-1}$, so $Z_{\rm post}$ is the
 integral of a multivariate Gaussian with a dense covariance matrix over a rectangular
 domain.
 
-The linear parameters that are not truncated (but have normal prior pdfs) marginalize
-away straightforwardly using the refactorization in Equation~(\ref{eq:refactor}), and
-the remaining truncated parameters can then be handled using the corresponding elements
-of $\vec{a}$ and $\mat{A}$.
+The linear parameters that are not truncated (but have normal prior pdfs) can be
+marginalized away straightforwardly using the refactorization in
+Equation~(\ref{eq:refactor}), and the remaining truncated parameters must then be
+handled using the corresponding elements of $\vec{a}$ and $\mat{A}$.
 For example, if there are $Q$ linear parameters and only one parameter $\beta_k$ is
 truncated to a domain $(l, h)$, then
 \begin{align}
@@ -637,8 +654,9 @@ The integrals over $\vec{\beta}$ then become weighted sums over the mixture comp
   \quad ,
   \label{eq:mixture}
 \end{equation}
-where the subscript $i$ indicates a quantity computed with the mean and variance of
-mixture component $i$, and all mixture components share the same truncation domain.
+where the subscript $i$ indicates a quantity computed for mixture component $i$, and all
+mixture components share the same truncated domain.
+
 
 %--------------------------------------------------------------------
 \subsection{Priors that depend on the nonlinear parameters}
@@ -649,9 +667,9 @@ analytically marginalize over those parameters, but unconditional normal priors 
 to unphysical or unrealistic prior beliefs about the systems being modeled.
 As an example, consider the velocity semi-amplitude $K$ of a Keplerian orbit, which is a
 linear parameter in the radial velocity model (Equation~\ref{eq:rv-model}).
-A normal prior pdf on $K$ that is invariant to period $P$ implies that the prior pdf on
-the companion mass $m_2$ is a function of period, which is probably not what we want
-\citep{Price-Whelan:2020}.
+A normal prior pdf on $K$ that is constant with period $P$ implies that the prior pdf on
+the companion mass $m_2$ is a function of period, which is probably not a good choice in
+general \citep{Price-Whelan:2020}.
 Instead, we can pick a prior scale that is fixed in some other physical quantity, such
 as the companion mass or the physical size of the orbit.
 In \citet{Price-Whelan:2020}, we defined a scale for the prior on $K$ that is fixed in
@@ -660,7 +678,7 @@ companion mass, where the variance of the prior pdf is
   \sigma_K^2 = \sigma_{K,0}^2\,\left(\frac{P}{P_0}\right)^{-2/3}\,(1 - e^2)^{-1}
   \label{eq:sigma-K}
 \end{equation}
-where $\sigma_{K,0}$ is a velocity scale and $P_0$ is a reference period.
+and $\sigma_{K,0}$ is a velocity scale and $P_0$ is a reference period.
 At fixed primary mass, this has a fixed form in companion mass, which is a more
 physically motivated choice.
 
@@ -684,15 +702,35 @@ tangential velocity.
 These expressions depend on the parallax $\varpi$, which is itself a linear parameter
 of the astrometric model.
 When using these priors, we therefore have to sample the parallax explicitly along with
-the nonlinear parameters, and we cannot marginalize over it.
+the nonlinear parameters.
+This lowers the efficiency of the rejection sampler for every source, because the
+parallax is usually measured much more precisely than the width of its prior pdf
+(Section~\ref{sec:performance}).
+When the parallax is already well measured, for example in a catalog like \gaia, the
+prior widths can instead be computed from that fixed value.
+We can then treat the parallax as a linear parameter to marginalize over.
+This is technically wrong, because for one the parallax itself may be biased by the
+orbit, and also the prior widths will be offset by the fractional error of the fixed
+parallax.
+However, in practice this is a small effect because the prior widths are usually much
+larger than the fractional error of the parallax --- the parallax is still handled
+properly as a parameter in the model, this only concerns the scale of the priors over
+the other linear parameters.
+When the parallax is poorly measured, however (e.g., $\sigma_\varpi/\varpi \gtrsim
+0.1$), we recommend sampling the parallax explicitly, because the prior widths will then
+be more accurate and the the additional cost of sampling the parallax is small when it
+is not well constrained.
+In either case, the posterior parallax should be compared with the value used for the
+prior widths, and if they differ by more than a few percent, the fit can be repeated
+with the posterior value.
 
 
 %--------------------------------------------------------------------
 \subsection{The rejection sampler}
 \label{sec:methods-rejection}
 
-\harv\ models are implemented on top of \package{numpyro}, and prior pdfs are specified
-using \package{numpyro} distributions.
+\harv\ models are implemented on top of \package{numpyro} so that prior pdfs are
+specified as \package{numpyro} distribution objects.
 This means that we can use any of the inference methods implemented in \package{numpyro}
 to generate posterior samples of the parameters.
 However, for all of the reasons described in Section~\ref{sec:intro}, we expect that the
@@ -720,18 +758,19 @@ The surviving samples are, by construction, independent samples from the posteri
 This is a brute force method, and for many sources, most of the computational effort
 will be spent evaluating the marginal likelihood for samples that are ultimately
 rejected.
-But what we gain is that there is no burn-in, no need to compute autocorrelation times,
-no need to tune proposal distributions, and no need to worry about convergence (in the
-MCMC sense).
+But the benefit is that there is no burn-in, no need to compute autocorrelation times,
+no need to tune proposal distributions, and no need to worry about convergence.
 The likelihood evaluations are also embarrassingly parallel, so the method parallelizes
 easily across multiple CPU cores or GPUs.
 We do, however, have to choose the number of prior samples $J$ to generate, and we need
-to pay attention to the number of samples that survive the rejection step, $M$, and we
-may want to check that we have resolved the dominant modes enough that $\mathcal{G}_{\rm
-max}$ is a good estimate of the true maximum of the marginal likelihood.
+to pay attention to the number of samples that survive the rejection step, $M$.
+We also may need to check that we have resolved the dominant modes enough that
+$\mathcal{G}_{\rm max}$ is a good estimate of the true maximum of the marginal
+likelihood.
 
 We have implemented a few new features that help make the rejection sampling more
-efficient and robust, or that differ from the default behavior of \joker.
+efficient and robust, or that differ from the default behavior of \joker, as we desctibe
+below.
 
 
 \subsubsection{Returning a fixed number of samples}
@@ -788,8 +827,8 @@ sample(s) are not in the dominant mode or the model cannot explain the data.
 
 Even if both of these checks pass, it still does not guarantee that we have
 representative samples from the dominant posterior mode.
-In practice, we have found that unless the data are very adversarial, these tests tend
-to be sufficient.
+However, in practice, we have found that unless the data are very adversarial, these
+tests tend to be sufficient.
 Section~\ref{sec:cases-apogee} shows an example of using these checks to assess the
 returned samples.
 
@@ -811,8 +850,8 @@ FML as
   p(\vec{y}) \approx \frac{1}{J} \sum_{j=1}^{J} \mathcal{G}_j
   \quad .
 \end{equation}
-This is a Monte Carlo estimate of the FML integral that uses all $J$ prior samples, and
-it is unbiased, but it can have high variance.
+This is a Monte Carlo estimate of the FML integral that uses all $J$ prior samples.
+The estimate is unbiased, but it can have high variance.
 The variance of the estimate depends on the effective sample size (ESS) of the
 importance weights (Equation~\ref{eq:weights}),
 \begin{equation}
@@ -820,8 +859,8 @@ importance weights (Equation~\ref{eq:weights}),
   \quad .
 \end{equation}
 The ESS $J_{\rm eff}$ and the sum of the returned weights (Equation~\ref{eq:weights})
-are two diagnostics for the samples returned by \harv: $J_{\rm eff}$ uses all $J$ prior
-samples and tells us whether the sampling of the prior pdf was dense enough to resolve
+are two diagnostics for the samples returned by \harv.
+$J_{\rm eff}$ tells us whether the sampling of the prior pdf was dense enough to resolve
 the posterior pdf.
 If $J_{\rm eff} \gg 1$, many prior samples contribute to the posterior pdf, and the
 uncertainty on $\ln p(\vec{y})$ is approximately $J_{\rm eff}^{-1/2}$.
@@ -829,9 +868,8 @@ If $J_{\rm eff} \approx 1$, a single prior sample dominates, and the posterior p
 probably much narrower than the typical spacing between prior samples.
 In this regime, the returned samples may lie near a mode of the posterior but do not
 necessarily resolve it.
-Also, the mode may not be the dominant mode of the posterior
-(Section~\ref{sec:methods-gmax}), so the evidence estimate is unreliable (but is
-typically too low).
+Also, the mode may not be the dominant mode of the posterior, so the evidence estimate
+is unreliable (but is typically too low).
 \harv\ will compute these diagnostics when prompted and return these along with the FML
 estimate with the samples.
 
@@ -870,6 +908,7 @@ used for the sampling (the interim prior; \citealt{Hogg:2010}),
   \quad ,
   \label{eq:reweight}
 \end{equation}
+\todo{Adopt $\alpha$ vs $\alpha_0$ notation instead for consistency with earlier, and not $p_H$?}
 where the subscript ``H'' indicates the hierarchical prior pdf, the sum is over the
 returned samples, and the constant we dropped does not depend on $\vec{\alpha}$.
 For samples that are returned from the rejection step, which are unweighted, this is
@@ -910,15 +949,17 @@ phase (as do the RVs), along with parameters that do not appear directly in the 
 In this case, we could use \package{jaxoplanet} \citep{jaxoplanet} to compute the
 transit light curve and its log likelihood, and then use \harv\ to compute the marginal
 log likelihood of the RVs.
-We could then construct a joint model that samples the shared orbital parameters and the
-additional transit parameters, and adds the log likelihoods of the two data sets.
-However, for this example, transit data constrain the period and phase far more tightly
-than a few RVs would, so rejection sampling from a broad prior pdf would be very
-inefficient for such a model, and it would be better to instead initialize MCMC from a
-fit to the light curve data alone.
+We could then construct a joint model in \package{numpyro} that samples the shared
+orbital parameters and the additional transit parameters, and adds the log likelihoods
+of the two data sets.
+% However, for this example, transit data constrain the period and phase far more tightly
+% than a few RVs would, so rejection sampling from a broad prior pdf would be very
+% inefficient for such a model, and it would be better to instead initialize MCMC from a
+% fit to the light curve data alone.
 We do not demonstrate this here, but mention it only as a possibility given the
 flexibility of tools built on \jax\ and \package{numpyro}.
 
+% TODO: AUDIT TEXT BELOW
 
 %--------------------------------------------------------------------
 \section{Case studies}
@@ -1750,8 +1791,10 @@ are consistent.
 We use RV data from the source 2M02323271+3350542 (Section~\ref{sec:cases-apogee}),
 which has three observations, and we run both rejection samplers with $J = 10^6$ prior
 samples.
-We compare the evidence estimates using marginal likelihoods computed for the same prior
-samples in both cases.
+The two codes use different conventions for the orbital phase (\joker\ uses the mean
+anomaly at a reference time and \harv\ the phase of pericenter), so instead of comparing
+the marginal likelihoods sample by sample, we compare the evidence estimates from
+independent sets of prior samples drawn by each code.
 We find for \harv\ $\ln p(\vec{y}) = -8.490 \pm 0.002$ and for \joker\ $-8.487 \pm
 0.002$, which are consistent within the Monte Carlo uncertainty.
 
@@ -1762,23 +1805,31 @@ rejection sampler given $J$ prior samples (left panel) and $N$ observations (rig
 panel).
 On the CPU, the time grows linearly with $J$ for both packages, so the time per prior
 sample is nearly constant for both codes at a given $N=8$.
-On the GPU, there is a fixed overhead of about \todo{13}~\unit{ms} per call that
+On the GPU, there is a fixed overhead of about 13~\unit{ms} per call that
 dominates the runtime below $J \approx 10^5$, but the wall time approaches linear in $J$
 for larger $J$.
-At $N = 8$ and $J = 10^7$, \joker\ takes \todo{4.2}~\unit{\micro\second} per prior
-sample, and \harv\ takes \todo{1.5}~\unit{\micro\second} on one CPU core and
-\todo{0.014}~\unit{\micro\second} on one GPU, so \harv\ is \todo{2.8} and \todo{310}
+At $N = 8$ and $J = 10^7$, \joker\ takes 4.2~\unit{\micro\second} per prior
+sample, and \harv\ takes 1.5~\unit{\micro\second} on one CPU core and
+0.014~\unit{\micro\second} on one GPU, so \harv\ is 2.8 and 310
 times faster.
 
 So for small numbers of observations per source, \harv\ is modestly faster than \joker\
 on CPU, but the speed-up grows substantially for more observations.
-\todo{Why exactly is \harv\ faster than \joker? doesn't it also construct these matrices? why wouldn't it grow linearly with N?}
-\joker\ forms two $N \times N$ matrices for each prior sample during the rejection step,
-so its cost per sample grows steeper than linearly with $N$.
-The cost per sample of \harv\ grows more slowly with the number of observations,
-apparently below a linear scaling.
+For each prior sample, \joker\ builds the $N \times N$ matrix
+$\mat{C} + \mat{X}\,\mat{\Lambda}\,\transp{\mat{X}}$ of
+Equation~\ref{eq:marginal-likelihood} and its inverse, and computes an LU factorization
+of it for the determinant, so its cost per sample grows faster than linearly with $N$
+(roughly as $N^2$ over the range we test).
+\harv\ never forms these matrices: with a diagonal $\mat{C}$, it uses the matrix
+inversion and determinant lemmas (Section~\ref{sec:methods-marginal}), which only need
+$Q \times Q$ matrices and cost $\mathcal{O}(N\,Q^2)$ per prior sample.
+On one CPU core, the time per prior sample of \harv\ is close to
+$(0.8 + 0.075\,N)~\unit{\micro\second}$ (within 10\% for all $N$ we test).
+Below $N \approx 10$, the part that does not depend on $N$ (the $Q \times Q$ linear
+algebra and other overheads per sample) dominates, which makes the scaling look
+shallower than linear, but at larger $N$ the time grows linearly with $N$.
 \harv's speed-up relative to \joker\ therefore grows with $N$: at $J = 10^6$ prior
-samples, the factor speed-up is $\approx 1.6$ for $N = 4$ but increases to $\approx43$
+samples, the factor speed-up is $\approx 1.6$ for $N = 4$ but increases to $\approx 42$
 for $N = 128$ on one CPU core.
 Another advantage of \harv\ is that it can run on a GPU, which is much faster than
 either code on a CPU.
@@ -1849,10 +1900,16 @@ single visit or transit.
 We expect the posterior volume over the $d$ sampled parameters to shrink like ${\rm
 SNR}^{-d}$ when the number of observations is large or when the SNR is high, so we
 expect $\epsilon \propto {\rm SNR}^{-d}$ (asymptotically).
-The number of sampled parameters $d = (4, 7, 4)$ for the three parameterizations we
+The number of sampled parameters $d = (4, 6, 3)$ for the three parameterizations we
 consider here: the standard RV parameterization, the standard \gaia\ parameterization,
-and the Thiele--Innes \gaia\ parameterization, respectively (see also
-Table~\ref{tab:parameterizations}).
+and the Thiele--Innes \gaia\ parameterization, respectively (the nonlinear parameters in
+Table~\ref{tab:parameterizations}), when the parallax is marginalized.
+With the default \gaia\ priors, the parallax is sampled too
+(Section~\ref{sec:methods-priors-nonlinear}), but its precision does not depend on the
+orbit, so it multiplies the cost by a constant factor of about $1/\epsilon_\varpi$
+instead of adding a power of the SNR, with
+$\epsilon_\varpi \approx \sqrt{2}\,\sigma_\varpi/\sigma_{\varpi,{\rm prior}}$ for a
+Gaussian likelihood under a much broader Gaussian prior.
 % For the standard RV parameterization, $d = 4$ corresponding to ($P$, $e$, phase,
 % $\omega$) and for the standard \gaia\ parameterization, $d = 7$ corresponding to ($P$,
 % $e$, phase, $\omega$, $\Omega$, $\cos i$, $\varpi$) where the parallax $\varpi$ is
@@ -1867,67 +1924,80 @@ Table~\ref{tab:parameterizations}).
 We test the scalings numerically with simulated data.
 We use the prior from Section~\ref{sec:cases-apogee} for RVs and the prior from
 Section~\ref{sec:cases-gaia4} (without jitter) for \gaia\ astrometry.
+For both \gaia\ parameterizations, we compute the prior widths on $a_0$ (or the
+Thiele--Innes constants) and on the proper motion from a fixed parallax, so that the
+parallax is marginalized (Section~\ref{sec:methods-priors-nonlinear}).
+For each simulated data set, we take this parallax from a fit of position, proper
+motion, and parallax (without a companion) to the same data, as a catalog would.
 For the Thiele--Innes parameterization, we use the same priors, with a Gaussian prior on
 each Thiele--Innes constant that has the same width as the prior on $a_0$.
 We do not apply a Jacobian correction, so the implied prior on $a_0$ and the orientation
 of the orbit differs from the standard one. \todo{shouldn't we apply the Jacobian?}
 We use the same simulated data for both \gaia\ parameterizations.
-For each data type, we use only one set of orbital parameters to simulate: For RVs, we
-use $P = 200~\unit{day}$, $e = 0.3$, and $K = 5~\unit{km.s^{-1}}$ over a baseline of 3
-years, and for \gaia, we use $P = 150~\unit{day}$, $e = 0.2$, and $a_0 = 0.5~\unit{mas}$
-over a baseline of 5 years (with random scan angles and parallax factors).
+For each data type, we use only one orbit shape and vary its amplitude: For RVs, we use
+$P = 200~\unit{day}$ and $e = 0.3$ over a baseline of 3 years, and for \gaia, we use
+$P = 150~\unit{day}$ and $e = 0.2$ over a baseline of 5 years (with random scan angles
+and parallax factors).
 For the \gaia\ astrometry, we assume a Sun-like host star with $M=1~\unit{\Msun}$ and $G
 = 13$ (corresponding to $\varpi = 2.16~\unit{mas}$ from the distance modulus with $M_{G}
 = 4.67$ and no extinction).
-The parallax matters for the \gaia\ data because it affects the angular size of the
-orbit and the width of the prior pdf on $a_0$.
+The parallax matters for the \gaia\ data because it sets the angular size of the orbit
+and the widths of the prior pdfs on $a_0$ and the proper motion.
 We pick the periods above to be near the logarithmic middle of the period prior and not
 near 1 year, harmonics of 1 year, or the 63-day precession period of the \gaia\ scanning
 law.
 
-For the simulated data, we set the total SNR between 0.3 and 1000 by scaling the
-uncertainties using $N = 3$, 6, and 12 RVs and $N = 40$ and 250 \gaia\ transits.
+We hold the uncertainty of each observation fixed at survey-like values,
+$\sigma_v = 0.18~\unit{km.s^{-1}}$ per visit for \apogee-like RVs and
+$\sigma_{\rm AL} = 0.03~\unit{mas}$ per transit for \gaia\ at $G = 13$, and we set the
+total SNR between 0.3 and 1000 by scaling the amplitude ($K$ or $a_0$), using $N = 3$,
+6, and 12 RVs and $N = 40$ and 250 \gaia\ transits.
+At these uncertainties, the parallax is measured to \todo{0.003--0.008}~\unit{mas}
+whether or not the orbit is detected, much more precisely than the $1~\unit{mas}$ width
+of its prior pdf.
 We do this for three realizations of the observation times and noise for each.
 For each set of data, we start with $J = 10^6$ prior samples and multiply $J$ by 10
 until $J_{\rm eff} \geq 128$ or $J = 10^8$, and we estimate $\epsilon$ from the last
 run.
-We also compute the expected total SNR for three representative companions on the same
-orbits, but we scale the amplitude to match: an M dwarf ($0.3~\unit{\Msun}$), a brown
-dwarf ($30~\unit{\Mjup}$), and a giant planet ($3~\unit{\Mjup}$), around a
-$1~\unit{\Msun}$ star observed with \apogee-like RVs ($\sigma_v = 0.18~\unit{km.s^{-1}}$
-per visit) or by \gaia\ at $G = 13$ ($\sigma_{\rm AL} = 0.03~\unit{mas}$ per transit).
+With the uncertainties fixed, three representative companions on these orbits around a
+$1~\unit{\Msun}$ star fall at known points along each curve: an M dwarf
+($0.3~\unit{\Msun}$), a brown dwarf ($30~\unit{\Mjup}$), and a giant planet
+($3~\unit{\Mjup}$), where for RVs the mass is $m \sin i$.
 \todo{Check $\sigma_{\rm AL}$ at $G = 13$ against the DR4 documentation, including
 whether DR4 epochs are per CCD or per transit.}
 
 Figure~\ref{fig:bench-ess} shows these results.
-Where the data are uninformative (total SNR $\lesssim 1$), $\epsilon \approx 0.3$--0.7,
-so a few thousand prior samples already results in $\targESS = 1024$ effective samples.
-Above that, the cost (i.e. number of prior samples we need) is a steep function of the
-total SNR.
-For the standard \gaia\ parameterization, the curves for $N = 40$ and 250 overlap and
-rise roughly as ${\rm SNR}^7$ above a total SNR of about 2, so $10^8$ prior samples
-resolve the posterior pdf only up to a total SNR of about 6.
-With the Thiele--Innes parameterization, the same number of prior samples reaches a
-total SNR of 20--30.
-For RVs, the $N = 6$ and 12 curves have similar shapes and local slopes around 4 as
-expected.
+For RVs, where the data are uninformative (total SNR $\lesssim 1$),
+$\epsilon \approx 0.3$--0.7, so a few thousand prior samples already result in
+$\targESS = 1024$ effective samples.
+Above that, the cost (i.e. the number of prior samples we need) is a steep function of
+the total SNR, and the $N = 6$ and 12 curves have local slopes around 4 as expected.
+For \gaia, $\epsilon \approx \todo{0.3--0.7}$ at low SNR, as for RVs, and $10^8$ prior
+samples resolve the posterior pdf up to a total SNR of about \todo{X} (standard) and
+\todo{Y} (Thiele--Innes).
+If the parallax is sampled instead, it alone limits the efficiency to
+$\epsilon_\varpi \approx \sqrt{2}\,\sigma_\varpi/(1~\unit{mas}) \approx
+\todo{0.005--0.01}$ (we measure \todo{...} at a total SNR of \todo{...}), so even
+sources with undetected orbits need \todo{$\sim 10^5$} prior samples.
 
 \todo{edit text down if possible}
 For the representative companions, the giant planet ($3~\unit{\Mjup}$) has a total
-SNR of at most 1.4 in both surveys and needs only a few thousand prior samples.
+SNR of at most 1.4 in both surveys.
+With RVs, it needs only a few thousand prior samples, and with \gaia\ it needs
+\todo{...}.
 The brown dwarf ($30~\unit{\Mjup}$) is at a total SNR of 5--14 with RVs and 4--10 with
 \gaia.
 For RVs this takes at most $3 \times 10^7$ prior samples (0.7~s on one GPU, about
 1~min on one CPU core).
-For $N = 250$ \gaia\ transits, it takes $7 \times 10^6$ prior samples with the
-Thiele--Innes parameterization (2~s on one GPU), but is beyond what $10^8$ prior
-samples resolve with the standard parameterization.
+For $N = 250$ \gaia\ transits, it takes \todo{...} prior samples with the
+Thiele--Innes parameterization and \todo{...} with the standard parameterization.
 The M dwarf ($0.3~\unit{\Msun}$) is at a total SNR of 34--120, beyond the reach of the
 rejection sampler in every case except $N = 3$ RVs ($8 \times 10^4$ prior samples).
 At $G \approx 17$, the same star is 6.3 times farther away, so $a_0$ is 6.3 times
 smaller, and with $\sigma_{\rm AL} \approx \todo{0.4}~\unit{mas}$ per transit even the
-M dwarf has a total SNR of at most about 1: the rejection sampler is cheap there, but
-the data barely constrain the orbit.
+M dwarf has a total SNR of at most about 1, and the parallax is measured to only
+\todo{0.05--0.1}~\unit{mas}: the rejection sampler is cheap there even with the parallax
+sampled, but the data barely constrain the orbit.
 For more informative data, nested sampling or MCMC is the better choice
 (Section~\ref{sec:discussion-rejection}).
 
@@ -1937,6 +2007,8 @@ For more informative data, nested sampling or MCMC is the better choice
   \caption{
     The number of prior samples needed to get $\targESS = 1024$ effective samples from
     the posterior, as a function of the total SNR of the orbit.
+    The uncertainty of each observation is fixed at the survey-like values given in the
+    text, and the amplitude of the orbit sets the total SNR.
     The lines show the median and range from three realizations of the simulated data,
     and we show a few choices for the number of observations $N$.
     The dashed line is proportional to (total SNR)$^d$.
@@ -1947,10 +2019,11 @@ For more informative data, nested sampling or MCMC is the better choice
     Bars at the top show ranges of the total SNR for the three representative companions
     described in the text for different numbers of observations.
     \textit{Left}: The standard RV parameterization, with $d = 4$ sampled parameters.
-    \textit{Middle}: The standard \gaia\ parameterization, with $d = 7$ sampled
+    \textit{Middle}: The standard \gaia\ parameterization, with $d = 6$ sampled
     parameters.
-    \textit{Right}: The Thiele--Innes \gaia\ parameterization, with $d = 4$ sampled
+    \textit{Right}: The Thiele--Innes \gaia\ parameterization, with $d = 3$ sampled
     parameters.
+    In both \gaia\ panels, the parallax is marginalized.
     \label{fig:bench-ess}
   }
 \end{figure*}
@@ -2019,9 +2092,14 @@ with informative data.
 The rejection sampler needs a sampling of the prior pdf that is dense compared to the
 structure of the posterior pdf, and the number of prior samples this takes grows
 exponentially with the information $H$ (Section~\ref{sec:cases-interop}).
-For informative data, $H$ grows with the logarithm of the signal-to-noise ratio, so the
-cost grows as a power of the signal-to-noise ratio, with an exponent equal to the number
-of sampled parameters (Section~\ref{sec:performance}).
+For informative data, $H$ grows with the logarithm of the total signal-to-noise ratio,
+so the cost grows as a power of the total signal-to-noise ratio, with an exponent equal
+to the number of sampled parameters whose posterior widths shrink with it
+(Section~\ref{sec:performance}).
+For \gaia\ astrometry, a sampled parallax also adds a cost for every source, including
+those with undetected orbits, because the parallax is usually well measured; computing
+the prior widths from the catalog parallax and marginalizing the parallax removes this
+cost and one sampled dimension (Section~\ref{sec:methods-priors-nonlinear}).
 For sparse or noisy data, which is where the rejection sampler is most useful, this is
 cheap.
 In Section~\ref{sec:cases-pop-inf}, 182 of the 256 simulated stars return 1024
