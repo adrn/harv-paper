@@ -31,6 +31,7 @@
 % - Use present tense, active voice. "is drawn from", "is marginalized" etc should be
 %   edited.
 % - Audit figure captions.
+% - Make sure figures have suptitles.
 % - Add harv version tag to abstract so we only have to quote it in one place.
 % - Add ExoPlanetLab https://arxiv.org/pdf/2611.13770 to other packages list.
 
@@ -2069,6 +2070,7 @@ In this regime, the model is under-constrained, so the cost grows more slowly wi
     parameters.
     In both \gaia\ panels, the parallax is marginalized.
     \todo{Should we call the y axis ``1/epsilon''? Is that what it is?}
+    \todo{suptitle}
     \label{fig:bench-ess}
   }
 \end{figure*}
@@ -2138,13 +2140,12 @@ The rejection sampler needs a sampling of the prior pdf that is dense compared t
 structure of the posterior pdf, and the number of prior samples this takes grows
 exponentially with the information $H$ (Section~\ref{sec:cases-interop}).
 For informative data, $H$ grows with the logarithm of the total signal-to-noise ratio,
-so the cost grows as a power of the total signal-to-noise ratio, with an exponent equal
-to the number of sampled parameters whose posterior widths shrink with it
-(Section~\ref{sec:performance}).
-For \gaia\ astrometry, a sampled parallax also adds a cost for every source, including
-those with undetected orbits, because the parallax is usually well measured; computing
-the prior widths from the catalog parallax and marginalizing the parallax removes this
-cost and one sampled dimension (Section~\ref{sec:methods-priors-nonlinear}).
+so the cost grows as a power of the total signal-to-noise ratio with an exponent set by
+the number of sampled parameters (Section~\ref{sec:performance}).
+% For \gaia\ astrometry, a sampled parallax also adds a cost for every source, including
+% those with undetected orbits, because the parallax is usually well measured; computing
+% the prior widths from the catalog parallax and marginalizing the parallax removes this
+% cost and one sampled dimension (Section~\ref{sec:methods-priors-nonlinear}).
 For sparse or noisy data, which is where the rejection sampler is most useful, this is
 cheap.
 In Section~\ref{sec:cases-pop-inf}, 182 of the 256 simulated stars return 1024
@@ -2160,7 +2161,7 @@ the sample) took about half of the total computing time, whereas the 182 stars t
 needed only the first rejection run took only about 20\% of the total time.
 
 A second limitation is that when only one or a few samples survive, the sample(s) cannot
-really be trusted.
+be fully trusted.
 They might not even be in the dominant mode of the posterior pdf.
 In other words, $\mathcal{G}_{\rm max}$ may be below the highest peak of the marginal
 likelihood (which has not been resolved).
@@ -2168,12 +2169,11 @@ We cannot even trust the diagnostics computed from the returned samples to revea
 A single sample is, of course, ``unimodal'' in period, and MCMC chains that all start
 from that sample (especially gradient-based MCMC) will generally converge to the same
 mode with good convergence statistics, such as $\hat{R} \approx 1$.
-We saw this already in the case studies.
+We saw this in the case studies:
 For 2M20183197+1953430, we initialized an MCMC run from the single sample of the
-rejection sampling run with $10^7$ prior samples, and this converges to a mode with
-$\chi^2 = 418$ (for 13 visits), whereas the single sample from the run with $10^8$ prior
-samples leads to a mode with $\chi^2 \approx 3$ (Section~\ref{sec:cases-apogee}).
-\todo{Is this comparison still shown above in the case study?}
+rejection sampling run with $10^7$ prior samples, and this converges to a mode with bad
+goodness-of-fit, whereas the single sample from the run with $10^8$ prior samples leads
+to a mode with much a better $\chi^2$ (Section~\ref{sec:cases-apogee}).
 We therefore recommend that any automated pipeline that makes follow-up decisions based
 on the number of samples returned by the rejection sampler should also include a
 goodness-of-fit check, such as the $\chi^2$ of the best sample.
@@ -2227,12 +2227,12 @@ posterior pdf of an individual source.
 The exact number of samples needed depends on the population model, the interim prior,
 and the posterior pdf of each source (and variations of, withing a sample of sources).
 However, some general guidance has been developed in the context of gravitational-wave
-population inference with a similar setup \citep{Essick:2022}, which we summarize here.
+population inference with a similar setup \citep{Essick:2022}.
 It turns out that what matters most is the noisiness of the log-likelihood difference
 between values of $\vec{\alpha}$ where the posterior pdf of $\vec{\alpha}$ is large.
 Meaning, if the log-likelihood is noisy at some arbitrary value of $\vec{\alpha}$ but
-smooth in the region where the posterior pdf of $\vec{\alpha}$ is largest, then the
-noise does not matter.
+smooth in the region where the posterior pdf of $\vec{\alpha}$ is largest, then this
+variance does not matter.
 Because the posterior pdf of $\vec{\alpha}$ beomes narrower as the number of sources
 grows, the number of samples we need per source does not grow with the number of
 sources, unless the population model has features that are narrow compared to the
@@ -2248,18 +2248,17 @@ over $\vec{\alpha}$ is consistent.
 In the population inference case study above, we decided to keep 1024 samples per
 source, but we could have kept or required more (e.g., all prior samples that survived
 the rejection sampling).
-A cheaper test is recommended in \citet{Essick:2022}, which is to draw pairs of values
-of $\vec{\alpha}$ from the inferred posterior pdf, estimate the Monte Carlo variance of
-the difference in the log-likelihood from the sample variances and covariances of the
+\citet{Essick:2022} recommend a simpler test, which is to draw pairs of values of
+$\vec{\alpha}$ from the inferred posterior pdf, estimate the Monte Carlo variance of the
+difference in the log-likelihood from the sample variances and covariances of the
 weights from each source, and confirm that it is much smaller than 1.
-This variance is a sum over sources, so it also would tell us which sources need more
-samples.
-Here, those would most likely be the stars without a companion, which are also the
-cheapest to sample, so we should keep many more than 1024 samples for those stars and it
-should not impact the computational cost of the full population inference.
+This variance would also tell us which sources need more samples.
+Here, those would most likely be the stars without a companion, which are also the ones
+that are cheapest to sample, so we should have kept many more than 1024 samples for
+those stars (and it would not impact the computational cost of the full population
+inference).
 
-Third, this is perhaps obvious, but the population inference can be biased by issues
-with the per-source samples.
+Third, the population inference can be biased by issues with the per-source samples.
 We have discussed several subtleties of the rejection sampler and follow-up sampling
 procedures above, and issues with the resulting samples can propagate into biases in the
 population inference.
