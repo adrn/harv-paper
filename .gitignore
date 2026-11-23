@@ -14,3 +14,6 @@ data
 
 # Slurm logs
 logs/
+
+# Paper figures (overrides global *.pdf ignore)
+!paper/figures/*.pdf

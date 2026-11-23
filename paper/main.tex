@@ -28,6 +28,11 @@
 % - One reweighting equation, not three. Eqs. hierarchical, reweight and pop-mixture
 %   state the same estimator with different normalizations. Write it once carefully,
 %   including the top-M weighted case, and refer back to it.
+% - Use present tense, active voice. "is drawn from", "is marginalized" etc should be
+%   edited.
+% - Audit figure captions.
+% - Add harv version tag to abstract so we only have to quote it in one place.
+% - Add ExoPlanetLab https://arxiv.org/pdf/2611.13770 to other packages list.
 
 \documentclass[twocolumn]{AASTeX7/aastex701}
 
@@ -249,6 +254,7 @@ For example, for RV data (\texttt{RadVel} \citealt{Fulton:2018}; \texttt{juliet}
 \citealt{Trifonov:2019}; \texttt{exoplanet} \citealt{Foreman-Mackey:2021}), and for
 forward modeling \gaia\ epoch astrometry and the \dr{3} orbit-fitting pipeline
 (\texttt{gaiamock}, \citealt{ElBadry:2024-gaiamock}).
+\todo{Add https://arxiv.org/abs/2611.13770}
 Most of these packages are designed mainly to characterize individual systems in which a
 companion has been confidently detected, using MCMC or nested sampling.
 \todo{Work in that OFTI in orbitize, diffusive nested sampler in kima, and pigeons.jl in octofitter are all designed to handle multi-modality in posterior and used in population studies - cite Will Thompsons's recent papers.}
@@ -959,21 +965,19 @@ of the two data sets.
 We do not demonstrate this here, but mention it only as a possibility given the
 flexibility of tools built on \jax\ and \package{numpyro}.
 
-% TODO: AUDIT TEXT BELOW
-
 %--------------------------------------------------------------------
 \section{Case studies}
 \label{sec:case-studies}
 
 In this section we demonstrate \harv\ with four case studies.
-We have chosen these case studies to illustrate different aspects of the package and to
-demonstrate how to use it in practice.
+We have chosen these case studies to illustrate different aspects of the package and
+some best pracices.
 These are demonstrations of the methods and we do not consider the results for the
 individual systems to be new astrophysical results.
 The first three case studies use published data, and the last case study uses simulated
 data so that we know the true population parameters.
-Each case study is reproduced by a script or Jupyter notebook in the repository that
-accompanies this article,\footnote{See the ``scripts'' directory in
+Each case study is reproduced by a set of scripts or Jupyter notebooks in the repository
+that accompanies this article,\footnote{See the ``scripts'' directory in
 \url{https://github.com/adrn/harv-paper}.} using version \todo{0.x} of \harv.
 \todo{Move the case study notebooks to a top-level case-studies directory?}
 
@@ -984,9 +988,9 @@ accompanies this article,\footnote{See the ``scripts'' directory in
 This first case study demonstrates the basic functionality of \harv\ and shows the
 typical pipeline for analyzing a small sample of stars that may have varied data
 quality and time sampling.
-For this example, we use visit-level radial velocity (RV) measurements from
-\apogee\ \dr{17} \citep{Majewski:2017, Abdurrouf:2022} for a few handpicked sources that
-have a range of numbers of visits.
+For this example, we use visit-level radial velocity (RV) measurements from \apogee\
+\dr{17} \citep{Majewski:2017, Abdurrouf:2022} for a few handpicked sources that have a
+range of numbers of visits.
 We select six sources: two with 3 visits, two with 6 visits, and two with around 12
 visits (Table~\ref{tab:apogee}).
 For each pair of sources (per number of visits), one has large RV scatter (an obvious
@@ -1114,22 +1118,24 @@ The simplest path is to rerun the rejection sampler with \textit{even more} prio
 samples: the ratio $J_{\rm eff}/J \approx 2\times10^{-8}$ implies that of order
 $10^9$--$10^{10}$ prior samples would be needed to return a few hundred posterior
 samples.
-That is expensive, but possible for a small number of sources, and it parallelizes
-straightforwardly.
-\harv\ also includes an experimental option to build a period prior for each source
-from the periodogram of its data.
-This prior concentrates the prior samples near the periodogram peaks but keeps a
-log-uniform component, so that the prior pdf is nonzero over the full period range.
-We can then recover the posterior pdf under the original prior by reweighting the
-returned samples by the ratio of the original prior pdf to the periodogram-based prior
-pdf.
-However, these samples cannot trivially be used for population modeling.
-The interim prior differs from source to source, so it cannot be ignored and must be
-divided out sample by sample in Equation~\ref{eq:reweight}.
-The reweighted samples may also be sparse wherever the population prior puts mass far
-from the periodogram peaks.
-Finally, the evidence returned by such a run is with respect to the periodogram-based
-prior, not the original prior, so we cannot use it directly to compute the Bayes factor.
+That is expensive, but possible for a small number of sources, and it is straightforward
+to parallelize this calculation (or to run it on a GPU for better performance;
+Section~\ref{sec:performance}).
+% TODO: removed reference to the periodogram priors - that's too experimental to mention
+% \harv\ also includes an experimental option to build a period prior for each source
+% from the periodogram of its data.
+% This prior concentrates the prior samples near the periodogram peaks but keeps a
+% log-uniform component, so that the prior pdf is nonzero over the full period range.
+% We can then recover the posterior pdf under the original prior by reweighting the
+% returned samples by the ratio of the original prior pdf to the periodogram-based prior
+% pdf.
+% However, these samples cannot trivially be used for population modeling.
+% The interim prior differs from source to source, so it cannot be ignored and must be
+% divided out sample by sample in Equation~\ref{eq:reweight}.
+% The reweighted samples may also be sparse wherever the population prior puts mass far
+% from the periodogram peaks.
+% Finally, the evidence returned by such a run is with respect to the periodogram-based
+% prior, not the original prior, so we cannot use it directly to compute the Bayes factor.
 
 For the two sources with $N \approx 12$ visits, the rejection sampler returns many
 samples for the source with small scatter (2M16022747+2902099), with a large effective
@@ -1160,14 +1166,16 @@ We run 4 chains, each with 1000 warm-up steps followed by 2000 sampling steps.
 At the end of the sampling, all parameters have $\hat{R} < 1.01$.
 At the MAP sample, $P = 51.29~\unit{day}$ and $\chi^2 \approx 3$ for 13 visits (7
 degrees of freedom), which is a good fit given the calibrated uncertainties.
-The checks mattered here: if we had continued with MCMC from the single sample from the
-first run with $10^7$ prior samples, all chains would have converged within a peak at $P
-= 55.21~\unit{day}$ (also with $\hat{R} < 1.01$ for all parameters, because all of the
+Note that if we had continued with MCMC from the single sample from the first run with
+$10^7$ prior samples, all chains would have converged within a peak at $P =
+55.21~\unit{day}$ (also with $\hat{R} < 1.01$ for all parameters, because all of the
 chains start in the same mode), but with $\chi^2 = 418$ at the MAP sample.
-However, a good fit still does not rule out that other modes exist, and unfortunately
-the only way to know that is to continue running the rejection sampling with more and
-more prior samples until the returned samples are dense enough to resolve the posterior
-structure.
+This emphasizes the importance of checking the goodness of fit at the MAP sample, and
+rerunning the rejection sampling with more prior samples if the fit is bad.
+However, a good fit still does not rule out that other (better) modes exist in the
+posterior pdf, and unfortunately the only way to know that is to continue running the
+rejection sampling with more and more prior samples until the returned samples are dense
+enough to resolve the posterior structure.
 For this case, we compare our results with those from a nested sampler, which explores
 the full prior, in Section~\ref{sec:cases-interop}.
 
@@ -1179,8 +1187,8 @@ The \apogee\ catalog uncertainties are known to be underestimated
 \citep[e.g.,][]{Cottaar:2014, Badenes:2018, Price-Whelan:2020}, so for all of the
 results above we have used the recalibrated visit uncertainties from
 \citet{Price-Whelan:2020}.
-If we instead use the \apogee\ catalog uncertainties, the log Bayes factor for the
-marginal sources would likely be higher.
+If we instead use the raw \apogee\ catalog uncertainties, the log Bayes factor for the
+marginal sources is substantially higher.
 Instead of recalibrating the uncertainties, another way to handle this would be to add
 a jitter parameter for each source and marginalize over its value.
 We do not recommend this for large samples because it will limit the detection
@@ -1198,7 +1206,7 @@ astrometry}
 
 \todo{We need to explain how we go from the CCD-level astrometry to the field-of-view transit-level astrometry. That was done in harv/docs/tutorials/data/Gaia-DR4-preview.ipynb}
 
-The second case study demonstrates how to use \harv\ to model a source with both radial
+This second case study demonstrates how to use \harv\ to model a source with both radial
 velocity and astrometric data, and with very informative data that precisely constrain
 the orbital parameters.
 Gaia-4b is a super-Jupiter planet with a $P\approx 570~\unit{day}$ orbit around a nearby
@@ -1215,7 +1223,7 @@ planet.
 While we were preparing this manuscript, \citet{Kanodia:2026} published a joint analysis
 of the Gaia-4 system using the same data, so we compare our results to theirs below.
 
-We start with the astrometry alone, and we use the rejection sampler.
+We start with the astrometry alone using the rejection sampler.
 We use the standard parameterization for the astrometric model, with a prior pdf that
 is uniform in $\ln P$ between 10 and $2000~\unit{day}$ and the default prior pdfs for
 the other nonlinear parameters.
@@ -1226,22 +1234,24 @@ tangential velocity scale of $100~\unit{km.s^{-1}}$ and by $\sigma_{a,0} = 1~\un
 (Equation~\ref{eq:sigma-a}), respectively.
 Because these prior pdfs depend on the parallax, the parallax is sampled explicitly
 rather than marginalized.
+\todo{With new harv feature, can we now use the scale\_parallax option to avoid sampling parallax explicitly?}
 We use the catalog parallax to set the prior on parallax under the assumption that the
 exoplanet signal is small compared to the astrometric signal of the star's apparent
 motion.
 Here, the parallax prior is set to a normal distribution centered on $13.643~\unit{mas}$
-with a width of $1~\unit{mas}$, which is broad compared to the size of the orbit and the
-catalog parallax uncertainty.
+(the \gaia\ \dr{3} parallax) with a width of $1~\unit{mas}$, which is broad compared to
+the size of the orbit and the catalog parallax uncertainty.
 We also include an astrometric jitter parameter, with a half-normal prior pdf with a
-scale of $0.1~\unit{mas}$.
+scale of $0.1~\unit{mas}$, because the \gaia\ \dr{4} pre-release data are not yet fully
+calibrated and may have underestimated uncertainties.
 With these choices, we generate $J = 10^7$ prior samples and run the rejection sampling.
 Only one sample survives the rejection step, with a period of $P \approx
 574~\unit{day}$.
 
-We continue with MCMC, using NUTS.
+We continue with MCMC again using NUTS.
 We first use the returned sample to initialize an optimizer to find the nearby maximum
 of the posterior pdf mode that the sample is in, which shifts the MCMC initialization to
-$P = 578.3~\unit{day}$, where the fit is good (reduced $\chi^2 = 1.02$; see
+$P = 578.3~\unit{day}$, and the goodness of fit here is (reduced) $\chi^2 = 1.02$ (see
 Section~\ref{sec:methods-gmax}).
 We then run 4 NUTS chains from this location, each with 1000 warm-up steps followed by
 2000 sampling steps.
@@ -1377,25 +1387,31 @@ live points is less than $10^{-3}$ of the accumulated evidence, and run the nest
 sampler with five different seeds for each source.
 We take the number of slice steps as 5 times the number of sampled parameters, which is
 the recommended default in \package{PolyChord} \citep{Handley:2015a, Handley:2015b}.
+This is not meant to be an exhaustive exploration of the nested sampling settings, but
+it is used here only to demonstrate how to use \harv\ with other inference tools and to
+compare the results with those from the rejection sampler.
 
-For the three sources from Section~\ref{sec:cases-apogee} with $J_{\rm eff} \gg 1$
-(2M02323271+3350542, 2M16022747+2902099, and 2M15323868+4218297), the evidence
-estimates from the two methods agree.
-The rejection sampler gives $\ln p(\vec{y}) = -8.4890 \pm 0.0005$, $-6.2214 \pm 0.0022$,
-and $-17.729 \pm 0.007$, and nested sampling gives $-8.50 \pm 0.03$, $-6.24 \pm 0.09$,
-and $-17.74 \pm 0.07$ (mean and standard deviation over random number seeds).
-This is expected and reassuring.
+For the three sources from Section~\ref{sec:cases-apogee} that have large effective
+sample sizes $J_{\rm eff} \gg 1$ --- 2M02323271+3350542, 2M16022747+2902099, and
+2M15323868+4218297 --- the evidence estimates from the two methods agree.
+With the rejection sampler, we get $\ln p(\vec{y}) = -8.4890 \pm 0.0005$, $-6.2214 \pm
+0.0022$, and $-17.729 \pm 0.007$, and with nested sampling we get $-8.50 \pm 0.03$,
+$-6.24 \pm 0.09$, and $-17.74 \pm 0.07$ (mean and standard deviation over random number
+seeds).
 For these sources, the uncertainty that each nested sampling run reports also matches
 the scatter over the random seeds (0.034, 0.060, and 0.082 versus 0.031, 0.086,
 and 0.069), which suggests that our adopted settings are sufficient for estimating the
 evidence for these sources.
 
-The two methods are similar in spirit.
-Both \harv\ and nested sampling estimate the evidence using samples from the prior pdf,
-but the computational cost of the methods depend differently on how informative the data
-are for a given run.
-We can quantify how informative the data are with the information gain or simply the
-``information'' \citep{Skilling:2006},
+As an aside, it is worth noting that nested sampling and \harv's rejection sampler are
+similar in spirit.
+Both \harv\ and nested sampling can estimate the evidence using samples from the prior
+pdf and are more robust at handling multi-modal posterior pdfs as compared to
+traditional MCMC.
+But the computational cost of the methods depends differently on how informative the
+data are for a given run.
+We can quantify how informative the data are with the information gain or just ``the
+information'' \citep{Skilling:2006},
 \begin{equation}
   H = \int \dd\vec{\theta}\, p(\vec{\theta} \given \vec{y})
     \ln \frac{p(\vec{\theta} \given \vec{y})}{p(\vec{\theta})}
@@ -1413,8 +1429,8 @@ samples, and the number of prior samples we need, conversely, grows exponentiall
 $H$.
 For the three sources above, the nested sampling runs give $H = 1.05$, 3.27, and 6.11,
 so $e^{-H} = 0.35$, 0.038, and 0.0022.
-The rejection runs from Section~\ref{sec:cases-apogee} give $J_{\rm eff}/J = 0.28$,
-0.021, and 0.0018, below these values but comparable in magnitude.
+The rejection runs from Section~\ref{sec:cases-apogee} result in $J_{\rm eff}/J = 0.28$,
+0.021, and 0.0018 --- slightly below the expected values but comparable in magnitude.
 
 Nested sampling instead keeps a set of $n_{\rm live}$ ``live points,'' which are
 essentially samples from the prior pdf that are constrained to have a likelihood above
@@ -1422,19 +1438,19 @@ a threshold.
 These points are repeatedly updated with new samples from the prior pdf that are
 constrained to have an even higher likelihood than the lowest-likelihood live point (see
 \citealt{Ashton:2022, Buchner:2023} for reviews of nested sampling).
-Nested sampling keeps the replaced (``dead'') points and weights each by its likelihood
+Nested sampling keeps the replaced (``dead'') points and weights each by the likelihood
 and the prior volume, so the dead points end up being weighted samples of the posterior
 pdf.
 Each point that is replaced shrinks the prior volume enclosed by the live points by a
 factor of about $e^{-1/n_{\rm live}}$, so every $n_{\rm live}$ replaced points shrink
-the enclosed volume by another factor of $e$.
-To reach the posterior, which occupies about a fraction $e^{-H}$ of the prior mass (as
-discussed above), nested sampling therefore replaces about $n_{\rm live} \times H$
-points (plus some more to meet the stopping criterion), so the cost grows only linearly
-with $H$ \citep{Skilling:2006}.
+the enclosed volume by another factor of $e$ (the constant, not the eccentricity).
+To reach the target distribution (the posterior), which occupies about a fraction
+$e^{-H}$ of the prior mass (as discussed above), nested sampling therefore has to
+replace about $n_{\rm live} \times H$ points (plus some more to meet the stopping
+criterion), so the cost only grows linearly with $H$ \citep{Skilling:2006}.
 
-For example, the runs for 2M20183197+1953430 ($H \approx 26$, below) take about 330
-nested sampling iterations, compared with about 130 for 2M15323868+4218297 ($H \approx
+For example, the nested sampling runs for 2M20183197+1953430 ($H \approx 26$, below)
+take about 330 iterations, compared with about 130 for 2M15323868+4218297 ($H \approx
 6.1$), whereas the rejection sampler would need about $e^{20} \approx 5 \times 10^{8}$
 times more prior samples, or about $J \gtrsim e^{26} \approx 10^{11}$ total prior
 samples.
@@ -1443,12 +1459,15 @@ the evidence estimate ($-134.1$) is way below the nested sampling estimate ($-33
 2.1$).
 All five nested sampling runs find a single period mode at $P = 51.29~\unit{day}$, the
 same mode as the MCMC samples in Section~\ref{sec:cases-apogee}.
-However, our default nested sampling settings are not sufficient for this source either:
-we re-run the nested sampling with different random seeds and find that the seed-to-seed
-scatter varies the evidence estimate by about 2.1 whereas each run reports an
-uncertainty of about 0.17.
-Still, for sources like this, nested sampling (or standard MCMC if the samples lie in a
-single period mode) is a better option, but with appropriately chosen run settings.
+% However, our default nested sampling settings are not sufficient for this source either:
+% we re-run the nested sampling with different random seeds and find that the seed-to-seed
+% scatter varies the evidence estimate by about 2.1 whereas each run reports an
+% uncertainty of about 0.17.
+For sources like this, nested sampling (or standard MCMC if the samples lie in a single
+period mode) is a better option than the rejection sampler, but it is recommended to use
+the rejection sampler to identify cases like this and then run a follow-up sampling with
+nested sampling or MCMC.
+% , but with appropriately chosen run settings.
 
 \begin{figure*}
   \centering
@@ -1473,7 +1492,7 @@ single period mode) is a better option, but with appropriately chosen run settin
   }
 \end{figure*}
 
-Nested sampling, however, like MCMC, has its own limitations.
+However, nested sampling, like MCMC, has its own limitations.
 For example, nested sampling can return a bad sampling from a posterior pdf with many
 modes even when the data are only moderately informative.
 We demonstrate this with the source 2M15323868+4218297, which has three visits over 26
@@ -1490,29 +1509,28 @@ that they agree to within the sampling noise.
 We then run the nested slice sampler (with the same setup as above using 1000 live
 points) five times with different random seeds.
 We get a consistent evidence estimate from the nested sampler (compared to the rejection
-sampler) and similar mode structure in period (middle panel of
+sampler) and similar mode structure in period (at least visually; middle panel of
 Figure~\ref{fig:nested-sampling}), but the posterior samples are much clumpier than the
 rejection samples.
 The 4096 samples in the middle panel are resampled from the weighted dead points, but
-consecutive dead points along a slice walk are correlated, hence the clumpiness within
-the modes.
+consecutive dead points along a slice walk are correlated, which can lead to poor
+sampling of the posterior distribution.
 Also, the probabilities of the modes vary between our five nested sampling runs by more
 than the uncertainty outputted from the effective sample size of each run (about 2200).
 For example, the fraction of the posterior probability between 12.5 and
 $15.5~\unit{day}$ (visibly, one of the dominant modes in
 Figure~\ref{fig:nested-sampling}) ranges from 0.110 to 0.174 over the five nested
-sampling runs, with a per-run uncertainty of $\approx 0.007$.
+sampling runs, but the estimated uncertainty from a single run is only $\approx 0.007$.
 If we repeat the rejection sampling with five random number seeds, we find that same
 mode varies from 0.127 to 0.132, but with an uncertainty of 0.004 (i.e., more
-appropriate given the scatter).
+appropriate).
 Importantly, running the nested sampler for \emph{longer} would not fix this, because
 the run stops when the live points hold less than $10^{-3}$ of the evidence, so more
 iterations would just add more points with very small weights.
 Instead, we would need to increase the number of live points until the modes are well
 sampled, which can be expensive for complex posterior pdf structure like we see here.
 
-To test this, we also run the nested sampler five times with 10,000 live points
-(replacing 1000 points per iteration).
+To test this, we also run the nested sampler five times with 10,000 live points.
 The samples then look much more like the rejection samples (right panel of
 Figure~\ref{fig:nested-sampling}), and the fraction of the posterior probability between
 12.5 and $15.5~\unit{day}$ ranges from 0.122 to 0.135, much closer to the range of the
@@ -1555,7 +1573,7 @@ MCMC only for sources that need follow-up.
 
 The first three case studies focus on analyzing individual sources, or small numbers of
 sources.
-However, the main motivation for \harv\ is to enable population inferences that use all
+But the main motivation for \harv\ is to enable population inferences that use all
 sources from a large sample, whether or not its orbit is well constrained
 (Section~\ref{sec:intro}).
 In this case study, we demonstrate this use case by inferring the binary fraction and
@@ -1566,18 +1584,19 @@ Here we use simulated data so we can compare the inferred population with truth.
 We simulate RV data for 256 stars, 102 ($\approx 40\%$) of which have a companion, each
 observed between 3--12 times (drawn uniformly) over 8 years with uncertainties of
 $0.5~\unit{km.s^{-1}}$.
-For the binaries, the log period $\log_{10}(P/\unit{day})$ is drawn from a normal
+For the binaries, we sample the log period $\log_{10}(P/\unit{day})$ from a normal
 distribution with mean 5.03 and standard deviation 2.28 \citep{Raghavan:2010}, truncated
 to periods between 5 and $1000~\unit{day}$.
-The eccentricity $e$ is drawn from a normal distribution with mean 0.4 and standard
+We sample the eccentricity $e$ from a normal distribution with mean 0.4 and standard
 deviation 0.15, truncated to $[0, 1]$.
-Finally, the log companion mass $\log_{10}(m_2/\unit{\Msun})$ is drawn from a normal
+Finally, we sample the log companion mass $\log_{10}(m_2/\unit{\Msun})$ from a normal
 distribution with mean $\log_{10} 0.9$ and standard deviation 0.3, truncated to
 companion masses between 0.1 and $1~\unit{\Msun}$.
-The primary masses $m_1$ are drawn from a normal distribution with a mean
-$1~\unit{\Msun}$ and standard deviation 0.3, truncated to $[0.5, 1.5]$.
+We sample primary masses $m_1$ from a normal distribution with a mean $1~\unit{\Msun}$
+and standard deviation 0.3, truncated to $[0.5, 1.5]$.
 These choices are very roughly meant to represent a population of solar-type stars with
-low-mass companions, but we do not attempt to match any particular population in detail.
+low-mass companions, but we do not attempt to match any particular population correctly
+or in detail.
 We generate the orientation angles for the orbits to be isotropic.
 The resulting velocity semi-amplitudes in the simulated sample vary from $\approx 0.7$
 to $74~\unit{km.s^{-1}}$.
@@ -1626,7 +1645,7 @@ the marker size).
 
 For the inference pipeline, we start by running the \harv\ rejection sampler on each
 simulated system.
-We use the same prior pdf for all sources, which is then the interim prior of the
+We use the same prior pdf for all sources, which is the interim prior of the
 hierarchical model below.
 This prior pdf is uniform in $\ln P$ between 0.5 and $10^4~\unit{day}$, a truncated
 normal distribution for $e$ with mean 0.1 and standard deviation 0.4, uniform in the
@@ -1637,8 +1656,8 @@ rejection sampler on every star using these samples; we keep at most 1024 sample
 star.
 After this stage, 182 of 256 sources return 1024 samples, 40 sources return $\leq3$
 samples, and 34 sources return an intermediate number of samples.
-For stars with fewer than 1024 samples, we follow up the rejection sampling with a few
-different options.
+For stars with fewer than 1024 samples, we follow up the rejection sampling with other
+strategies.
 First, we re-run the rejection sampler with a library of $10^8$ prior samples that we
 again generate once and reuse for all such cases.
 If, after this, a star gets 1024 samples, we save the samples and proceed.
@@ -1659,20 +1678,23 @@ these outcomes.
 
 We model the population as a mixture of binaries and stars with a constant velocity.
 The mixture weight for this model is the binary fraction $f_{\rm bin}$.
-However, the concept of a binary fraction is ill-defined until we define what we mean by
-a binary.
-Strictly speaking, there are no single stars: every star presumably has planets,
-asteroids, or at least a few dust grains in orbit around it, so the binary fraction of
-any population is 1, which we can report without looking at any data.
+However, a ``binary fraction'' is not a useful conceput until we define what we mean by
+a binary.\footnote{Technically, there are no single stars: every star presumably has
+planets, asteroids, or at least a few dust grains in orbit around it, so the
+(ambiguously-defined) ``binary fraction'' of any population is 1 (which we can assert
+without looking at any data).
 In practice, a binary fraction counts the stars with a companion that is massive enough
-and close enough to matter for some data set, and these thresholds are usually set
-implicitly by the data and the method rather than explicitly stated.
-Two binary fractions measured from different surveys of the same stars can therefore
-both be correct, but disagree.
+and close enough to matter for some data set.
+However, these thresholds are often set implicitly by the data and the method rather
+than explicitly stated.
+An implication of this is that two binary fractions measured from different surveys of
+the same stars can therefore disagree even thought both may be technically correct.
 So an unqualified ``binary fraction'' is not a measurement of anything in particular.
-Here, we define $f_{\rm bin}$ as the fraction of stars that have a companion with
-properties in some range: period $5 < P < 1000~\unit{day}$ and mass $0.1 < m_2 <
-1~\unit{\Msun}$.
+Here, we have simulated the data to be either exactly single stars or stars with a
+companion in a specific range of period and mass, so our pedantic objections are not
+really relevant for this experiment.}
+We define $f_{\rm bin}$ as the fraction of stars that have a companion with properties
+in the range period $5 < P < 1000~\unit{day}$ and mass $0.1 < m_2 < 1~\unit{\Msun}$.
 All other stars count as stars without a companion (as we have defined companion).
 In this toy simulation, every companion is in this range, so we can model the other
 stars as having constant velocity.
@@ -1689,16 +1711,17 @@ where the first term is the reweighting sum of Equation~\ref{eq:hierarchical}, e
 $n$ has $M_n$ samples from the procedure above (here, all $M_n = 1024$ but in general
 they could be different), $Z_{{\rm int},n}$ is the evidence for the binary model under
 the interim prior (from the rejection sampler), the $w_{nk}(\vec{\alpha})$ are the
-weights for each sample (defined below), and $Z_{{\rm single},n}$ is the evidence for
-the constant-velocity model, which we compute as in Section~\ref{sec:cases-apogee}.
+weights for each sample (defined below in Equation~\ref{eq:pop-weights}), and $Z_{{\rm
+single},n}$ is the evidence for the constant-velocity model, which we compute as in
+Section~\ref{sec:cases-apogee}.
 Unlike in Equation~\ref{eq:hierarchical}, the evidences do not cancel here because
 the two terms in the mixture are different models.
 
 For the binaries, the population model is a truncated normal distribution in each of
 $\log_{10} P$ (between 5 and $1000~\unit{day}$), $e$ (between 0 and 1), and $\log_{10}
 m_2$ (between 0.1 and $1~\unit{\Msun}$), so $\vec{\alpha}$ contains the three means and
-three standard deviations, and $f_{\rm bin}$ is the fraction of stars with a companion
-in this range of $P$ and $m_2$.
+three standard deviations of the normal distributions, and $f_{\rm bin}$ is the fraction
+of stars with a companion in this range of $P$ and $m_2$.
 Now, the samples are in $(P, e, K)$, but we express the population model in terms of
 $(P, e, m_2)$.
 So, for each sample, we draw $m_1$ from its measurement and $\cos i$ from a
@@ -1708,6 +1731,7 @@ of the transformation from $K$ to $m_2$ in the weight
   w_{nk}(\vec{\alpha}) =
     \frac{p(P_{nk}, e_{nk}, m_{2,nk} \given \vec{\alpha})}{p(P_{nk}, e_{nk}, K_{nk})}
     \left|\pderiv{m_2}{K}\right|_{nk}
+    \label{eq:pop-weights}
   \quad ,
 \end{equation}
 where the denominator is the interim prior pdf, and $w_{nk} = 0$ outside the range of
@@ -1750,7 +1774,8 @@ and the binaries with poorly constrained orbits.
 In other worsd, we do not have to selects stars by the signal-to-noise of the inferred
 orbital parametes or the detection significance.
 
-\todo{Add some statement or disclaimer above that monte carlo sums are correlated because we use the same prior samples for all stars.}
+% TODO: Is it worth adding a statement or disclaimer above that monte carlo sums are
+% correlated because we use the same prior samples for all stars?
 
 %--------------------------------------------------------------------
 \section{Performance benchmarks}
@@ -1769,19 +1794,18 @@ distributing tasks and collecting or saving the results.
 
 \subsection{Comparison to \joker}
 
-We time the rejection sampler implemented in of \harv\ (version \todo{release tag})
-versus \joker\ (version 1.3.1) on simulated RV data, using the prior from
-Section~\ref{sec:cases-apogee} in both codes.
-The simulated orbit has $P = 200~\unit{day}$, $e = 0.3$, and $K = 10~\unit{km.s^{-1}}$,
-observed with uncertainties of $0.5~\unit{km.s^{-1}}$ over 3 years (and a variable
-number of observations).
-The cost per prior sample depends on the number of observations $N$ but not on the
-values of the data, so the choices of the simulated orbit and the observation times do
-not affect these benchmarks.
+We time the rejection sampler implemented in of \harv\ versus \joker\ (version 1.3.1) on
+simulated RV data, using the prior from Section~\ref{sec:cases-apogee} in both codes.
+The simulated RV orbit has $P = 200~\unit{day}$, $e = 0.3$, and $K =
+10~\unit{km.s^{-1}}$, observed with uncertainties $0.5~\unit{km.s^{-1}}$ over 3 years
+(and a variable number of observations).
+The cost per prior sample does not depend on the values of the data, so the choices of
+the simulated orbit and the observation times do not affect these benchmarks (only the
+number of observations matter for scalings).
 While both \harv\ and \joker\ can stream cached prior samples from disk, here we only
 benchmark a situation where the full prior samples cache is already in memory.
-For \harv, we report the median time of three calls after the first and we therefore
-neglect \jax\ compilation overheads.
+For \harv, we run each benchmark three times and report the median time, so  we
+therefore neglect \jax\ compilation overheads.
 \joker\ likelihood evluations have no compilation overhead, so we time a single call.
 We also do not include the time to generate the prior samples for each code, which we
 only do once at the start (but even this is much faster in \harv\ than in \joker).
@@ -1813,31 +1837,30 @@ sample, and \harv\ takes 1.5~\unit{\micro\second} on one CPU core and
 0.014~\unit{\micro\second} on one GPU, so \harv\ is 2.8 and 310
 times faster.
 
-So for small numbers of observations per source, \harv\ is modestly faster than \joker\
-on CPU, but the speed-up grows substantially for more observations.
+From the above, we see that for small numbers of observations per source, \harv\ is
+about $3\times$ faster than \joker\ on CPU, but the speed-up grows substantially for
+data with more observations.
 For each prior sample, \joker\ builds the $N \times N$ matrix
 $\mat{C} + \mat{X}\,\mat{\Lambda}\,\transp{\mat{X}}$ of
 Equation~\ref{eq:marginal-likelihood} and its inverse, and computes an LU factorization
-of it for the determinant, so its cost per sample grows faster than linearly with $N$
-(roughly as $N^2$ over the range we test).
-\harv\ never forms these matrices: with a diagonal $\mat{C}$, it uses the matrix
-inversion and determinant lemmas (Section~\ref{sec:methods-marginal}), which only need
-$Q \times Q$ matrices and cost $\mathcal{O}(N\,Q^2)$ per prior sample.
-On one CPU core, the time per prior sample of \harv\ is close to
-$(0.8 + 0.075\,N)~\unit{\micro\second}$ (within 10\% for all $N$ we test).
-Below $N \approx 10$, the part that does not depend on $N$ (the $Q \times Q$ linear
-algebra and other overheads per sample) dominates, which makes the scaling look
-shallower than linear, but at larger $N$ the time grows linearly with $N$.
-\harv's speed-up relative to \joker\ therefore grows with $N$: at $J = 10^6$ prior
-samples, the factor speed-up is $\approx 1.6$ for $N = 4$ but increases to $\approx 42$
-for $N = 128$ on one CPU core.
+for the determinant, so the cost per sample grows faster than linearly with $N$ (roughly
+as $N^2$, we see empirically).
+\harv\ never explicitly creates these matrices.
+When the data covariance $\mat{C}$ is diagonal, we instead use the matrix inversion and
+determinant lemmas (Section~\ref{sec:methods-marginal}), which only need $Q \times Q$
+matrices and cost $\mathcal{O}(N\,Q^2)$ per prior sample.
+On one CPU core, the time per prior sample therefore scales linearly with $N$, so
+\harv's speed-up relative to \joker\ grows with $N$.
+As we can see in Figure~\ref{fig:bench-thejoker}, at $J = 10^6$ prior samples, the
+factor speed-up is $\approx 1.6$ for $N = 4$ but increases to $\approx 42$ for $N = 128$
+on one CPU core.
 Another advantage of \harv\ is that it can run on a GPU, which is much faster than
 either code on a CPU.
 However, for large samples of stars, if you have access to a cluster with many CPU
-cores, it may still be faster to run \harv\ on CPU cores: the relevant consideration
-here is whether the total number of CPU cores divided by the number of GPUs you have
-access to is larger than the speed-up factor of \harv\ on GPU versus CPU (i.e., for the
-typical number of observations per star in your sample).
+cores, it may still be faster to run \harv\ on CPU cores.
+The relevant consideration here is whether the total number of CPU cores divided by the
+number of GPUs you have access to is larger than the speed-up factor of \harv\ on GPU
+versus CPU (i.e., for the typical number of observations per star in your sample).
 
 \begin{figure*}
   \centering
@@ -1863,17 +1886,15 @@ but in real applications we usually care about the time it takes to return a giv
 number of effective samples from the posterior.
 For example, imagine we want to require that we get some number $\targESS$ of effective
 samples from the posterior for each source in a large sample of stars.
+This time will depend strongly on the data, because more informative data will lead to a
+smaller posterior volume and therefore a smaller efficiency $\epsilon = J_{\rm eff}/J$
+of the rejection sampler.
 To do this with the rejection sampler (which we may not want to enforce, but let's
 imagine we do for now), we need to draw $J$ prior samples, evaluate the likelihood for
-each, and then compute the effective sample size $J_{\rm eff}$ for each source.
-% In general, $J_{\rm eff}$ is not equal to $\targESS$, so we may need to draw more prior
-% samples to get the desired number of effective samples.
+each, and then compute the effective sample size $J_{\rm eff}$ for the samples.
 Once $J$ is large enough to resolve the posterior pdf, $J_{\rm eff}$ grows in proportion
-to $J$, so in this regime the efficiency
-\begin{equation}
-  \epsilon = \frac{J_{\rm eff}}{J}
-\end{equation}
-depends on the data and the prior pdf, but not on $J$.
+to $J$, so in this regime the efficiency $\epsilon$ depends on the data and the prior
+pdf, but not on $J$.
 Getting $\targESS$ effective samples therefore takes $\targESS/\epsilon$ prior samples,
 or a time
 \begin{equation}
@@ -1883,33 +1904,34 @@ or a time
 where $R$ is the number of prior samples evaluated per second.
 $R(N)$ depends on the number of observations, the parameterization, and the device, but
 not on the values of the data.
-The efficiency depends on the data, as we saw above $\epsilon \approx e^{-H}$
+The efficiency $\epsilon$ depends on the data, as we saw above $\epsilon \approx e^{-H}$
 (Section~\ref{sec:cases-interop}), where $H$ is the information over the parameters that
 are sampled (the linear parameters are marginalized and do not contribute).
 
-For informative data, the posterior width in each sampled parameter shrinks like
-$1/{\rm SNR}$, where SNR is the total signal-to-noise ratio of the orbit,
+For informative data ($H$ above some threshold), the posterior width in each sampled
+parameter scales with $1/{\rm SNR}$, where SNR is the total signal-to-noise ratio of the
+orbit of the observed star,
 \begin{equation}
   {\rm SNR}^2 = \sum_{n=1}^{N} \left(\frac{s_n}{\sigma_n}\right)^2
   \quad ,
 \end{equation}
-and $s_n$ is the orbital signal at observation $n$ after subtracting the model without a
-companion.
-This is the total SNR over all $N$ observations, not the signal-to-noise ratio of a
-single visit or transit.
+where $s_n$ is the orbital signal at observation $n$ (after subtracting the model
+without a companion --- i.e., constant velocity for RV data or the five parameter
+astrometric solution for astrometry), and this is the total SNR over all $N$
+observations, not the signal-to-noise ratio of a single visit or transit.
 We expect the posterior volume over the $d$ sampled parameters to shrink like ${\rm
 SNR}^{-d}$ when the number of observations is large or when the SNR is high, so we
-expect $\epsilon \propto {\rm SNR}^{-d}$ (asymptotically).
+expect $\epsilon \propto {\rm SNR}^{-d}$ (asymptotically). \todo{this sentence is unqualified - does it need more derivation?}
 The number of sampled parameters $d = (4, 6, 3)$ for the three parameterizations we
 consider here: the standard RV parameterization, the standard \gaia\ parameterization,
 and the Thiele--Innes \gaia\ parameterization, respectively (the nonlinear parameters in
 Table~\ref{tab:parameterizations}), when the parallax is marginalized.
-With the default \gaia\ priors, the parallax is sampled too
-(Section~\ref{sec:methods-priors-nonlinear}), but its precision does not depend on the
-orbit, so it multiplies the cost by a constant factor of about $1/\epsilon_\varpi$
-instead of adding a power of the SNR, with
-$\epsilon_\varpi \approx \sqrt{2}\,\sigma_\varpi/\sigma_{\varpi,{\rm prior}}$ for a
-Gaussian likelihood under a much broader Gaussian prior.
+% With the default \gaia\ priors, the parallax is sampled too
+% (Section~\ref{sec:methods-priors-nonlinear}), but its precision does not depend on the
+% orbit, so it multiplies the cost by a constant factor of about $1/\epsilon_\varpi$
+% instead of adding a power of the SNR, with
+% $\epsilon_\varpi \approx \sqrt{2}\,\sigma_\varpi/\sigma_{\varpi,{\rm prior}}$ for a
+% Gaussian likelihood under a much broader Gaussian prior.
 % For the standard RV parameterization, $d = 4$ corresponding to ($P$, $e$, phase,
 % $\omega$) and for the standard \gaia\ parameterization, $d = 7$ corresponding to ($P$,
 % $e$, phase, $\omega$, $\Omega$, $\cos i$, $\varpi$) where the parallax $\varpi$ is
@@ -1921,23 +1943,24 @@ Gaussian likelihood under a much broader Gaussian prior.
 % \todo{phase}, $\varpi$), so the cost of the rejection sampler should scale more like the
 % RV case.
 
-We test the scalings numerically with simulated data.
+We test these scalings numerically with simulated data.
 We use the prior from Section~\ref{sec:cases-apogee} for RVs and the prior from
 Section~\ref{sec:cases-gaia4} (without jitter) for \gaia\ astrometry.
 For both \gaia\ parameterizations, we compute the prior widths on $a_0$ (or the
 Thiele--Innes constants) and on the proper motion from a fixed parallax, so that the
 parallax is marginalized (Section~\ref{sec:methods-priors-nonlinear}).
-For each simulated data set, we take this parallax from a fit of position, proper
-motion, and parallax (without a companion) to the same data, as a catalog would.
+% For each simulated data set, we take this parallax from a fit of position, proper
+% motion, and parallax (without a companion) to the same data, as a catalog would.
 For the Thiele--Innes parameterization, we use the same priors, with a Gaussian prior on
 each Thiele--Innes constant that has the same width as the prior on $a_0$.
 We do not apply a Jacobian correction, so the implied prior on $a_0$ and the orientation
 of the orbit differs from the standard one. \todo{shouldn't we apply the Jacobian?}
 We use the same simulated data for both \gaia\ parameterizations.
-For each data type, we use only one orbit shape and vary its amplitude: For RVs, we use
-$P = 200~\unit{day}$ and $e = 0.3$ over a baseline of 3 years, and for \gaia, we use
-$P = 150~\unit{day}$ and $e = 0.2$ over a baseline of 5 years (with random scan angles
-and parallax factors).
+For each data type, we use one orbit shape, but we vary the amplitude of the signal ---
+that is, for RVs, we use $P = 200~\unit{day}$ and $e = 0.3$ over a baseline of 3 years,
+and for \gaia, we use $P = 150~\unit{day}$ and $e = 0.2$ over a baseline of 5 years
+(with random scan angles and parallax factors), but we vary the semi-ampltude $K$ or
+semi-major axis $a_0$ to set the total SNR.
 For the \gaia\ astrometry, we assume a Sun-like host star with $M=1~\unit{\Msun}$ and $G
 = 13$ (corresponding to $\varpi = 2.16~\unit{mas}$ from the distance modulus with $M_{G}
 = 4.67$ and no extinction).
@@ -1947,59 +1970,80 @@ We pick the periods above to be near the logarithmic middle of the period prior 
 near 1 year, harmonics of 1 year, or the 63-day precession period of the \gaia\ scanning
 law.
 
-We hold the uncertainty of each observation fixed at survey-like values,
-$\sigma_v = 0.18~\unit{km.s^{-1}}$ per visit for \apogee-like RVs and
-$\sigma_{\rm AL} = 0.03~\unit{mas}$ per transit for \gaia\ at $G = 13$, and we set the
-total SNR between 0.3 and 1000 by scaling the amplitude ($K$ or $a_0$), using $N = 3$,
-6, and 12 RVs and $N = 40$ and 250 \gaia\ transits.
-At these uncertainties, the parallax is measured to \todo{0.003--0.008}~\unit{mas}
-whether or not the orbit is detected, much more precisely than the $1~\unit{mas}$ width
-of its prior pdf.
+We fix the uncertainty of each observation at values motivated by \apogee\ and \gaia,
+$\sigma_v = 0.18~\unit{km.s^{-1}}$ per visit for \apogee-like RVs and $\sigma_{\rm AL} =
+0.03~\unit{mas}$ per transit for \gaia\ at $G = 13$, and we set the total SNR between
+0.3 and 1000 by scaling the amplitude ($K$ or $a_0$), using $N = 3$, 6, and 12 RVs and
+$N = 40$ and 250 \gaia\ transits.
+\todo{I think sigma\_AL should be more like 0.04 mas at G=13 - cite Yahalomi+2026}
+% At these uncertainties, the parallax is measured to 0.003--0.008~\unit{mas}
+% whether or not the orbit is detected, much more precisely than the $1~\unit{mas}$ width
+% of its prior pdf.
 We do this for three realizations of the observation times and noise for each.
-For each set of data, we start with $J = 10^6$ prior samples and multiply $J$ by 10
-until $J_{\rm eff} \geq 128$ or $J = 10^8$, and we estimate $\epsilon$ from the last
-run.
-With the uncertainties fixed, three representative companions on these orbits around a
-$1~\unit{\Msun}$ star fall at known points along each curve: an M dwarf
+For each dataset, we start with $J = 10^6$ prior samples and multiply $J$ by 10 until
+$J_{\rm eff} \geq 128$ or $J = 10^8$, and we estimate $\epsilon$ from the last run.
+With the uncertainties fixed, we can also mark ranges of SNR that correspond to three
+representative companions on these orbits around a $1~\unit{\Msun}$ star: an M dwarf
 ($0.3~\unit{\Msun}$), a brown dwarf ($30~\unit{\Mjup}$), and a giant planet
-($3~\unit{\Mjup}$), where for RVs the mass is $m \sin i$.
-\todo{Check $\sigma_{\rm AL}$ at $G = 13$ against the DR4 documentation, including
-whether DR4 epochs are per CCD or per transit.}
+($3~\unit{\Mjup}$).
 
-Figure~\ref{fig:bench-ess} shows these results.
-For RVs, where the data are uninformative (total SNR $\lesssim 1$),
-$\epsilon \approx 0.3$--0.7, so a few thousand prior samples already result in
-$\targESS = 1024$ effective samples.
-Above that, the cost (i.e. the number of prior samples we need) is a steep function of
-the total SNR, and the $N = 6$ and 12 curves have local slopes around 4 as expected.
-For \gaia, $\epsilon \approx \todo{0.3--0.7}$ at low SNR, as for RVs, and $10^8$ prior
-samples resolve the posterior pdf up to a total SNR of about \todo{X} (standard) and
-\todo{Y} (Thiele--Innes).
-If the parallax is sampled instead, it alone limits the efficiency to
-$\epsilon_\varpi \approx \sqrt{2}\,\sigma_\varpi/(1~\unit{mas}) \approx
-\todo{0.005--0.01}$ (we measure \todo{...} at a total SNR of \todo{...}), so even
-sources with undetected orbits need \todo{$\sim 10^5$} prior samples.
+Figure~\ref{fig:bench-ess} shows the results from these benchmarks.
+At low SNR, all of the curves are flat but well below $\epsilon = 1$.
+Even when the orbit is not detected, the data are precise enough to rule out large
+orbits for most periods and orientations, which is informative compared with the broad
+prior pdf on the amplitude.
+The flat level depends on the parameterization and data.
+Above a total SNR of about 3 (RVs and standard \gaia) or 10 (Thiele--Innes), the cost
+(i.e. the number of prior samples we need to reach a certain number of effective
+samples) rises steeply.
+In each panel, we plot a dashed line proportional to (total SNR)$^d$, where $d$ is the
+number of sampled parameters --- we can see that in all cases, the measured cost scales
+roughly as expected with SNR, with the exception of the Standard RV parameterzation with
+$N=3$ or 6 observations (left panel).
+In this regime, the model is under-constrained, so the cost grows more slowly with SNR.
 
-\todo{edit text down if possible}
-For the representative companions, the giant planet ($3~\unit{\Mjup}$) has a total
-SNR of at most 1.4 in both surveys.
-With RVs, it needs only a few thousand prior samples, and with \gaia\ it needs
-\todo{...}.
-The brown dwarf ($30~\unit{\Mjup}$) is at a total SNR of 5--14 with RVs and 4--10 with
-\gaia.
-For RVs this takes at most $3 \times 10^7$ prior samples (0.7~s on one GPU, about
-1~min on one CPU core).
-For $N = 250$ \gaia\ transits, it takes \todo{...} prior samples with the
-Thiele--Innes parameterization and \todo{...} with the standard parameterization.
-The M dwarf ($0.3~\unit{\Msun}$) is at a total SNR of 34--120, beyond the reach of the
-rejection sampler in every case except $N = 3$ RVs ($8 \times 10^4$ prior samples).
-At $G \approx 17$, the same star is 6.3 times farther away, so $a_0$ is 6.3 times
-smaller, and with $\sigma_{\rm AL} \approx \todo{0.4}~\unit{mas}$ per transit even the
-M dwarf has a total SNR of at most about 1, and the parallax is measured to only
-\todo{0.05--0.1}~\unit{mas}: the rejection sampler is cheap there even with the parallax
-sampled, but the data barely constrain the orbit.
-For more informative data, nested sampling or MCMC is the better choice
-(Section~\ref{sec:discussion-rejection}).
+% Fitting $\ln\epsilon$ against $\ln{\rm SNR}$ in this regime, with a separate
+% normalization for each realization, gives slopes of $-3.9$ for $N = 12$ RVs and $-3.1$
+% for the Thiele--Innes parameterization, close to $-d$.
+% The slope is shallower for $N = 6$ RVs ($-3.1$), which have only as many visits as
+% orbital parameters, and for the standard \gaia\ parameterization ($-3.9$), which
+% $10^8$ prior samples resolve only up to a total SNR of 10--18; at these SNRs, the
+% eccentricity ($e = 0.2$) is probably not yet measured well enough to separate the
+% argument of pericenter from the orbital phase.
+% With $N = 3$ RVs, the data cannot constrain all of the orbital parameters, and the cost
+% grows slowly (slope $-1.7$) up to a total SNR of 1000.
+% With $10^8$ prior samples, the Thiele--Innes parameterization resolves the posterior pdf
+% up to a total SNR of about 100, ten times higher than the standard parameterization.
+% If the parallax is sampled instead of marginalized, the cost goes up by a further
+% factor of 40--60 for $N = 40$ transits and 200--300 for $N = 250$ (measured at a total
+% SNR of 1), compared with $1/\epsilon_\varpi \approx 90$ and 200 from
+% $\epsilon_\varpi \approx \sqrt{2}\,\sigma_\varpi/(1~\unit{mas})$.
+
+% \todo{edit text down if possible}
+% For the representative companions, the giant planet ($3~\unit{\Mjup}$) has a total
+% SNR of at most 1.4 in both surveys, on the flat part of every curve: it takes about
+% $10^4$ prior samples with RVs, 3--$9 \times 10^4$ with the standard \gaia\
+% parameterization, and $2 \times 10^5$ with the Thiele--Innes parameterization (at most
+% 0.06~s on one GPU).
+% The brown dwarf ($30~\unit{\Mjup}$) is at a total SNR of 5--14 with RVs and 4--10 with
+% \gaia.
+% For RVs this takes at most $3 \times 10^7$ prior samples (0.7~s on one GPU, about
+% 1~min on one CPU core).
+% For $N = 250$ \gaia\ transits, it takes $5 \times 10^5$ prior samples with the
+% Thiele--Innes parameterization (0.2~s on one GPU) and $4 \times 10^7$ with the
+% standard parameterization (11~s on one GPU, about 30~min on one CPU core).
+% The M dwarf ($0.3~\unit{\Msun}$) is at a total SNR of 34--120, beyond the reach of the
+% rejection sampler with the standard parameterizations except for $N = 3$ RVs
+% ($6 \times 10^4$ prior samples), but within reach with the Thiele--Innes
+% parameterization: $9 \times 10^6$ prior samples for $N = 40$ transits and
+% $4 \times 10^8$ for $N = 250$ (1~s and 2~min on one GPU).
+% At $G \approx 17$, the same star is 6.3 times farther away, so $a_0$ is 6.3 times
+% smaller, and with $\sigma_{\rm AL} \approx \todo{0.4}~\unit{mas}$ per transit even the
+% M dwarf has a total SNR of at most about 1, and the parallax is measured to only
+% \todo{0.04--0.1}~\unit{mas}: the rejection sampler is cheap there even with the parallax
+% sampled, but the data barely constrain the orbit.
+% For more informative data, nested sampling or MCMC is the better choice
+% (Section~\ref{sec:discussion-rejection}).
 
 \begin{figure*}
   \centering
@@ -2024,6 +2068,7 @@ For more informative data, nested sampling or MCMC is the better choice
     \textit{Right}: The Thiele--Innes \gaia\ parameterization, with $d = 3$ sampled
     parameters.
     In both \gaia\ panels, the parallax is marginalized.
+    \todo{Should we call the y axis ``1/epsilon''? Is that what it is?}
     \label{fig:bench-ess}
   }
 \end{figure*}
