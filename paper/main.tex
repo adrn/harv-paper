@@ -220,9 +220,9 @@ Most of these packages are designed mainly to characterize individual systems in
 companion has been confidently detected, using MCMC or nested sampling.
 Some of these packages also include samplers designed for poorly constrained or
 multimodal posterior pdfs, such as OFTI in \texttt{orbitize!} \citep{Blunt:2017},
-diffusive nested sampling (DNest4) in \texttt{kima} \citep{Brewer:2011, Faria:2018}, and
-non-reversible parallel tempering (\texttt{Pigeons.jl}) in \texttt{Octofitter}
-\citep{Surjanovic:2023}.
+diffusive nested sampling (DNest4; \citealt{Brewer:2014}) in \texttt{kima}
+\citep{Faria:2018}, and non-reversible parallel tempering (\texttt{Pigeons.jl}) in
+\texttt{Octofitter} \citep{Surjanovic:2023}.
 \texttt{Octofitter} and \texttt{Pigeons.jl} were recently used with stars from the
 \textit{Hipparcos}--\gaia\ G23H sample \citep{Thompson:2026a} to sample orbit posterior
 pdfs and infer a hierarchical model of the companion population \citep{Thompson:2026b}.
@@ -438,7 +438,7 @@ calculations to use double precision (\texttt{float64}).
 We use \package{numpyro} \citep{phan2019composable} to represent and reason about prior
 pdfs and to run MCMC or other inference methods, \package{equinox} \citep{Kidger:2021}
 to define models, priors, and data containers as immutable dataclasses that \jax\ can
-trace through and transform, and \package{unxt} \citep{Starkman:TODO} so that data,
+trace through and transform, and \package{unxt} \citep{Starkman:2025} so that data,
 parameters, priors, and samples carry physical units.
 When needed, we compute the eccentric anomaly with a \jax-compatible implementation of
 the Kepler solver from \package{orvara} \citep{Brandt:2021, Raposo-Pulido:2017}.
@@ -800,7 +800,7 @@ $\mathcal{H}$) but becomes prohibitive for informative data, nested sampling sca
 better with the information in the data and is a better choice for good data.
 
 
-\subsubsection{Validating the maximum marginal likelihood, $\mathcal{G}_{\rm max}$}
+\subsubsection{Validating the maximum marginal likelihood}
 \label{sec:methods-gmax}
 
 When only a few samples survive the rejection step, $\mathcal{G}_{\rm max}$ (the
