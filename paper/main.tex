@@ -223,10 +223,10 @@ multimodal posterior pdfs, such as OFTI in \texttt{orbitize!} \citep{Blunt:2017}
 diffusive nested sampling (DNest4; \citealt{Brewer:2014}) in \texttt{kima}
 \citep{Faria:2018}, and non-reversible parallel tempering (\texttt{Pigeons.jl}) in
 \texttt{Octofitter} \citep{Surjanovic:2023}.
-\texttt{Octofitter} and \texttt{Pigeons.jl} were recently used with stars from the
-\textit{Hipparcos}--\gaia\ G23H sample \citep{Thompson:2026a} to sample orbit posterior
-pdfs and infer a hierarchical model of the companion population \citep{Thompson:2026b}.
-\todo{references wrong here}
+Recent work has used \texttt{Octofitter} and \texttt{Pigeons.jl} to compute companion
+posterior pdfs for about $10^5$ stars in the \textit{Hipparcos}--\gaia\ G23H catalog
+\citep{Thompson:2026a} and to infer the companion population of 63,254 of these stars
+\citep{Thompson:2026b}.
 The goal of \harv\ is similarly to enable population inferences with large samples of
 sources with companions.
 
@@ -2553,7 +2553,7 @@ where
 \end{align}
 Since $z' = 0$, only the first two columns of $\mat{R}$ contribute, and the position of
 the star in the sky frame can also be written using the Thiele--Innes constants
-\citep{TODO}
+\citep[e.g.,][]{Wright:2009, Halbwachs:2023}
 \begin{equation}
   \begin{pmatrix} x \\ y \\ z \end{pmatrix} =
   \begin{pmatrix} A & F \\ B & G \\ C & H \end{pmatrix}
