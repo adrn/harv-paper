@@ -2,6 +2,10 @@ ci:
   autoupdate_commit_msg: "chore: update pre-commit hooks"
   autofix_commit_msg: "style: pre-commit fixes"
 
+# nodeenv's "latest" picks up node prereleases and crashes; LTS is always a plain x.y.z
+default_language_version:
+  node: lts
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: "v6.0.0"

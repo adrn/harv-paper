@@ -445,7 +445,7 @@ the Kepler solver from \package{orvara} \citep{Brandt:2021, Raposo-Pulido:2017}.
 The log-probability of a model is a pure function of the parameter values and can be
 extracted from the \package{numpyro} model, so it can also be passed to other libraries
 in the \jax\ ecosystem; we show an example of this in Section~\ref{sec:cases-interop}
-where we demonstrate using \harv\ with \package{blackjax} \citep{blackjax} to run a
+where we demonstrate using \harv\ with \package{blackjax} \citep{Cabezas:2024} to run a
 nested sampling with a \harv\ model.
 
 
@@ -991,7 +991,7 @@ This first case study demonstrates the basic functionality of \harv\ and shows t
 typical pipeline for analyzing a small sample of stars that may have varied data
 quality and time sampling.
 For this example, we use visit-level radial velocity (RV) measurements from \apogee\
-\dr{17} \citep{Majewski:2017, Abdurrouf:2022} for a few handpicked sources that have a
+\dr{17} \citep{Majewski:2017, SDSSDR17} for a few handpicked sources that have a
 range of numbers of visits.
 We select six sources: two with 3 visits, two with 6 visits, and two with around 12
 visits (Table~\ref{tab:apogee}).
@@ -1153,7 +1153,7 @@ samples = sampler.run(data, key=key,
 With $10^8$ prior samples, the best sample has $\ln \mathcal{G}_{\rm max} = -115.7$ and
 a period $P = 51.29~\unit{day}$.
 At this point, still only one sample survives, so we continue sampling with MCMC.
-For this case, we initialize the No-U-Turn Sampler \citep[NUTS;][]{Hoffman:2014}
+For this case, we initialize the No-U-Turn Sampler \citep[NUTS;][]{Hoffman:2011}
 implemented in \package{numpyro} using the single rejection sample:
 \begin{lstlisting}
 if samples.period_unimodal(data):
@@ -1184,9 +1184,8 @@ model and the constant-velocity model (used for the evidence and Bayes factor es
 assume that any scatter in the velocities that cannot be explained by the
 constant-velocity model comes from a companion.
 The \apogee\ catalog uncertainties are known to be underestimated
-\citep[e.g.,][]{Cottaar:2014, Badenes:2018, Price-Whelan:2020}, so for all of the
-results above we use the recalibrated visit uncertainties from
-\citet{Price-Whelan:2020}.
+\citep[e.g.,][]{Badenes:2018, Price-Whelan:2020}, so for all of the results above we use
+the recalibrated visit uncertainties from \citet{Price-Whelan:2020}.
 If we instead use the raw \apogee\ catalog uncertainties, the log Bayes factor for the
 marginal sources is substantially higher.
 Instead of recalibrating the uncertainties, another way to handle this would be to add
@@ -1405,7 +1404,7 @@ steps per new point, replace 100 points per iteration, stop when the evidence in
 live points is less than $10^{-3}$ of the accumulated evidence, and run the nested
 sampler with five different seeds for each source.
 We take the number of slice steps as 5 times the number of sampled parameters, which is
-the recommended default in \package{PolyChord} \citep{Handley:2015a, Handley:2015b}.
+the recommended default in \package{PolyChord} \citep{Handley:2015}.
 This is not meant to be an exhaustive exploration of the nested sampling settings, but
 it is used here only to demonstrate how to use \harv\ with other inference tools and to
 compare the results with those from the rejection sampler.
