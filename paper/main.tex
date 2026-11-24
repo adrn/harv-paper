@@ -1073,9 +1073,8 @@ these larger runs (see below).
     second run with $J = 10^8$ new prior samples (see text).
     $N$ is the number of visits, $T$ is the time spanned by the visits, $S$ is the
     number of samples that survive the rejection step, $J_{\rm eff}$ is the effective
-    sample size, $w_{\rm max}$ is the largest importance weight
-    (Equation~\ref{eq:weights}), and $\ln\mathcal{B}$ is the log Bayes factor of the
-    companion model relative to a constant-velocity model.
+    sample size, and $\ln\mathcal{B}$ is the log Bayes factor of the companion model
+    relative to a constant-velocity model.
     For sources with $J_{\rm eff} < 3$, the evidence estimate and therefore
     $\ln\mathcal{B}$ is unreliable, so we mark these values with a dagger.
     \label{tab:apogee}
@@ -1971,7 +1970,7 @@ $N = 40$ and 250 \gaia\ transits.
 % of its prior pdf.
 We do this for three realizations of the observation times and noise for each.
 For each dataset, we start with $J = 10^6$ prior samples and multiply $J$ by 10 until
-$J_{\rm eff} \geq 128$ or $J = 10^8$, and we estimate $\epsilon$ from the last run.
+$J_{\rm eff} \geq 128$ or $J = 10^9$, and we estimate $\epsilon$ from the last run.
 With the uncertainties fixed, we can also mark ranges of SNR that correspond to three
 representative companions on these orbits around a $1~\unit{\Msun}$ star: an M dwarf
 ($0.3~\unit{\Msun}$), a brown dwarf ($30~\unit{\Mjup}$), and a giant planet
@@ -2046,8 +2045,8 @@ In this regime, the model is under-constrained, so the cost grows more slowly wi
     The lines show the median and range from three realizations of the simulated data,
     and we show a few choices for the number of observations $N$.
     The dashed line is proportional to (total SNR)$^d$.
-    The horizontal gray line at $10^8$ is the largest number of prior samples we
-    consider, and the curves end where even $10^8$ prior samples give $J_{\rm eff} < 128$.
+    The horizontal gray line at $10^9$ is the largest number of prior samples we
+    consider, and the curves end where even $10^9$ prior samples give $J_{\rm eff} < 128$.
     The right vertical axis gives the time on one GPU at the largest $N$ in each panel.
     Bars at the top show ranges of the total SNR for the three representative companions
     described in the text for different numbers of observations.
@@ -2057,6 +2056,7 @@ In this regime, the model is under-constrained, so the cost grows more slowly wi
     \textit{Right}: The Thiele--Innes \gaia\ parameterization, with $d = 3$ sampled
     parameters.
     In both \gaia\ panels, we marginalize the parallax.
+    \todo{Need to add notes about the host and error properties. Also can say what parallax the G=13 star has.}
     \label{fig:bench-ess}
   }
 \end{figure*}
