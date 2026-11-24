@@ -2269,11 +2269,55 @@ or photometry), but these are not specific to \harv.
 \section{Summary}
 \label{sec:summary}
 
-We describe \harv, a successor to \joker\ built on \jax\ for inferring the orbits of
-stellar companions from radial velocities and \gaia\ epoch astrometry.
-\todo{Summarize}
+We describe \harv, a successor to \joker\ \citep{Price-Whelan:2017} built on \jax\ for
+inferring the orbits of stellar companions from radial velocities and \gaia\ epoch
+astrometry.
+The main goal of \harv\ is to enable population inference on large samples of stars with
+heterogeneous data quality, including sources with sparse or low signal-to-noise data.
+Our main takeaways are:
+\begin{itemize}
+  \item \harv\ models of time series data are linear in a subset of the parameters
+    (e.g., the velocity semi-amplitude and systemic velocity for RV data, the five
+    astrometric parameters and the angular semi-major axis for astrometry, or the
+    Thiele--Innes constants).
+    \harv\ (optionally, but most often) marginalizes over these parameters analytically
+    by adopting conjugate normal (or truncated normal) prior pdfs so we only have to
+    explicitly sample the nonlinear parameters (Sections~\ref{sec:design} and
+    \ref{sec:methods}).
+  \item The rejection sampler returns independent posterior samples even if the
+    posterior pdf is highly multimodal, and it can be used to estimate the evidence for
+    a model.
+    Because the models are implemented with \jax, these models also work with
+    gradient-based MCMC or fast nested sampling methods for cases where the data are too
+    informative to warrant rejection sampling (Sections~\ref{sec:methods} and
+    \ref{sec:cases-interop}).
+  \item We demonstrate the rejection sampler in four case studies using (1) sparse
+    \apogee\ RVs, (2) a joint model of RVs and \gaia\ \dr{4} epoch astrometry for
+    Gaia-4b, (3) a comparison of rejection and nested sampling, and (4) a population
+    inference on simulated data that uses every star --- including stars without
+    companions and stars with poorly constrained orbits --- without enforcing a
+    detection threshold (Section~\ref{sec:case-studies}).
+  \item The cost of rejection sampling grows exponentially with the information in the
+    data, $\mathcal{H}$ (Equation~\ref{eq:information}), whereas the cost of nested
+    sampling only grows linearly with the information.
+    For informative data, rejection sampler performance scales as a power of the total
+    signal-to-noise of the orbit in the data, with the exponent equal to the number of
+    sampled parameters (Sections~\ref{sec:methods-scaling},
+    \ref{sec:cases-interop}, and \ref{sec:performance}).
+    The rejection sampler is therefore most useful for sparse, noisy, or
+    low-signal-to-noise data where other samplers struggle.
+    But it is still useful as a first step for inference with more informative data.
+  \item On one CPU core, \harv\ is between about 3 and 40 times faster than \joker\ and
+    the speed-up factor grows with the number of observations.
+    Its performance scales linearly with the number of prior samples or observations on
+    both CPU and GPU, and it can be parallelized across multiple CPU cores or GPUs to
+    make survey-wide applications feasible.
+    On one GPU it is between 100 to thousands of times faster than \joker\ about 300
+    times faster for 8 observations (Section~\ref{sec:performance}).
+\end{itemize}
 
-\harv\ is open-source software available at \url{https://github.com/adrn/harv}.
+\harv\ is open-source software available at \url{https://github.com/adrn/harv} and via
+the Python Package Index (\texttt{pip install harv}).
 This article uses version \todo{0.x} (\todo{Zenodo DOI}), and the documentation is at
 \todo{documentation URL}.
 The notebooks and scripts that reproduce the case studies, figures, and tables in this
