@@ -29,6 +29,7 @@
   \texttt{harv}: \\
   Fast companion orbit inference with radial velocity and \gaia\ epoch astrometry data
 }
+% TODO: title -> do we want to emphasize fast? And companion -> exoplanet, binary star, and compact object?
 
 \author[orcid=0000-0003-0872-7098]{Adrian M. Price-Whelan}
 \email{aprice-whelan@flatironinstitute.org}
@@ -171,7 +172,7 @@ parameter space that we need to sample over.
 An advantage to rejection sampling here is that the returned samples are independent
 draws from the posterior, however many modes there are, and we do not need to worry
 about convergence or autocorrelation analysis of chains (as we do with MCMC;
-\citealt{TODOmcmcreview}).
+\citealt{Hogg:2018}).
 \joker\ has been used in a number of population studies of stellar companions
 \citep[e.g.,][]{Giesers:2019, Price-Whelan:2020, Rosenthal:2021}.
 
@@ -201,14 +202,20 @@ and it is differentiable, so it can be used in gradient-based MCMC samplers or
 variational inference methods instead of the built-in rejection sampler.
 
 Many packages and methods exist to sample or fit Keplerian orbits to data.
-For example, for RV data (\texttt{RadVel} \citealt{Fulton:2018}; \texttt{juliet}
-\citealt{Espinoza:2019}), for astrometry and combinations of data (\texttt{orvara}
-\citealt{Brandt:2021}; \texttt{orbitize!} \citealt{Blunt:2020}; \texttt{Octofitter}
-\citealt{Thompson:2023}; \texttt{kima} \citealt{Faria:2018}; \texttt{Exo-Striker}
-\citealt{Trifonov:2019}; \texttt{exoplanet} \citealt{Foreman-Mackey:2021}), and for
-forward modeling \gaia\ epoch astrometry and the \dr{3} orbit-fitting pipeline
+For example, for RV data (
+  \texttt{juliet} \citealt{Espinoza:2019};
+  \texttt{RadVel} \citealt{Fulton:2018}),
+for astrometry and combinations of data (
+  \texttt{exoplanet} \citealt{Foreman-Mackey:2021};
+  \texttt{ExoPlanetLab} \citealt{Hobbs:2026};
+  \texttt{Exo-Striker} \citealt{Trifonov:2019};
+  \texttt{kima} \citealt{Faria:2018};
+  \texttt{Octofitter} \citealt{Thompson:2023};
+  \texttt{orbitize!} \citealt{Blunt:2020};
+  \texttt{orvara} \citealt{Brandt:2021}
+),
+and for forward modeling \gaia\ epoch astrometry and the \dr{3} orbit-fitting pipeline
 (\texttt{gaiamock}, \citealt{ElBadry:2024-gaiamock}).
-\todo{Add https://arxiv.org/abs/2611.13770}
 Most of these packages are designed mainly to characterize individual systems in which a
 companion has been confidently detected, using MCMC or nested sampling.
 Some of these packages also include samplers designed for poorly constrained or
@@ -283,7 +290,7 @@ As another example, for \gaia\ epoch astrometry, the data are one-dimensional
 the two-dimensional sky position onto the scan direction of the satellite over time.
 We model the along-scan position $y_{\rm AL}$ at time $t$ as the sum of the standard
 five-parameter astrometric model and a Keplerian orbit of the photocenter
-\citep[e.g.,][]{TODO}. \todo{Need a reference here. Is it Holl+2022?}
+\citep[e.g.,][]{Halbwachs:2023}.
 In terms of the Thiele--Innes constants $(A, B, F, G)$ and the astrometric in-plane
 coordinates $(X, Y)$ of the orbit (see Appendix~\ref{apx:conventions}), the along-scan
 position is
@@ -975,7 +982,6 @@ data so that we know the true population parameters.
 Each case study is reproduced by a set of scripts or Jupyter notebooks in the repository
 that accompanies this article,\footnote{See the ``scripts'' directory in
 \url{https://github.com/adrn/harv-paper}.} using version \todo{0.x} of \harv.
-\todo{Move the case study notebooks to a top-level case-studies directory?}
 
 %--------------------------------------------------------------------
 \subsection{Case study 1: APOGEE radial velocities for binary-star systems}
@@ -1148,8 +1154,8 @@ samples = sampler.run(data, key=key,
 With $10^8$ prior samples, the best sample has $\ln \mathcal{G}_{\rm max} = -115.7$ and
 a period $P = 51.29~\unit{day}$.
 At this point, still only one sample survives, so we continue sampling with MCMC.
-For this case, we initialize the No-U-Turn Sampler \citep[NUTS;][]{TODO} implemented in
-\package{numpyro} using the single rejection sample:
+For this case, we initialize the No-U-Turn Sampler \citep[NUTS;][]{Hoffman:2014}
+implemented in \package{numpyro} using the single rejection sample:
 \begin{lstlisting}
 if samples.period_unimodal(data):
     mcmc = harv.NumpyroSampler(prior, model)
@@ -1349,8 +1355,8 @@ the recent analysis \citep{Kanodia:2026}, $10.70 \pm 0.32~\unit{\Mjup}$, who use
 same \gaia\ pre-release data but more RV measurements.
 
 %--------------------------------------------------------------------
-\subsection{Case study 3: Connecting \harv\ with other inference tools (a demo with
-nested sampling)}
+\subsection{Case study 3: Connecting \harv\ with other inference tools and a comparison
+to nested sampling}
 \label{sec:cases-interop}
 
 Because \harv\ builds on top of \package{numpyro} (Section~\ref{sec:methods-interop}),
@@ -2033,16 +2039,15 @@ In this regime, the model is under-constrained, so the cost grows more slowly wi
   \centering
   \includegraphics[width=\textwidth]{figures/bench-ess.pdf}
   \caption{
-    The number of prior samples needed to get $\targESS = 1024$ effective samples from
+    The number of prior samples needed to get $\targESS = 128$ effective samples from
     the posterior, as a function of the total SNR of the orbit.
     We fix the uncertainty of each observation at the survey-like values given in the
     text, and the amplitude of the orbit sets the total SNR.
     The lines show the median and range from three realizations of the simulated data,
     and we show a few choices for the number of observations $N$.
     The dashed line is proportional to (total SNR)$^d$.
-    The horizontal gray line shows the largest number of prior samples we consider,
-    which is where $10^8$ prior samples give $J_{\rm eff} < 128$ (so the horizontal line
-    is at $10^8 \times 1024/128$).
+    The horizontal gray line at $10^8$ is the largest number of prior samples we
+    consider, and the curves end where even $10^8$ prior samples give $J_{\rm eff} < 128$.
     The right vertical axis gives the time on one GPU at the largest $N$ in each panel.
     Bars at the top show ranges of the total SNR for the three representative companions
     described in the text for different numbers of observations.
