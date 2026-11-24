@@ -901,16 +901,15 @@ For source $n$ with data $\vec{y}_n$, the likelihood given the hyperparameters i
 importance-sampling sum over the ratio of the population prior pdf to the interim prior
 pdf, $p(\vec{\theta} \given \vec{\alpha}_0)$, that was used for the sampling
 \citep{Hogg:2010},
-\begin{equation}
-  p(\vec{y}_n \given \vec{\alpha}) \approx
+\begin{align}
+  p(\vec{y}_n \given \vec{\alpha}) &\approx
     Z_{{\rm int},n} \sum_{k=1}^{S_n} w_{nk}\, r_{nk}(\vec{\alpha})
-  \quad , \quad
-  r_{nk}(\vec{\alpha}) =
+  \label{eq:reweight} \\
+  r_{nk}(\vec{\alpha}) &=
     \frac{p(\vec{\theta}_{nk} \given \vec{\alpha})}
       {p(\vec{\theta}_{nk} \given \vec{\alpha}_0)}
   \quad ,
-  \label{eq:reweight}
-\end{equation}
+\end{align}
 where $Z_{{\rm int},n}$ is the evidence for $\vec{y}_n$ under the interim prior, the sum
 is over the $S_n$ returned samples $\vec{\theta}_{nk}$, and $w_{nk}$ are their weights.
 For samples that are returned from the rejection step, which are unweighted $w_{nk} =
@@ -2339,17 +2338,47 @@ article are available at \url{https://github.com/adrn/harv-paper}.
   support and assistance with computing resources.
   The Flatiron Institute is a division of the Simons Foundation
 
+  \paragraph{LLM disclosure}
   I used Claude Opus 4.8, 5.0, and 5.5 during the software development process to
-  brainstorm code design and help implement features.
+  brainstorm code design and implement features.
   I used Claude Opus 5.5 to brainstorm case study ideas (see
   Section~\ref{sec:case-studies}) to demonstrate the capabilities of \harv\ in this
   article.
-  I used Claude Opus 5.5 to review and suggest edits to drafted math and text (for
-  clarity and consistency), but not to generate any of the math or text from prompts.
+  I used Claude Opus 5.5 to review and suggest edits to math and text that I wrote, but
+  not to generate any of the math or text from prompts.
 
-  \todo{Do we need data acknowledgments?}
-  Data acknowledgments: SDSS (\apogee), \gaia\ and DPAC, ESO and HARPS (programme IDs),
-  and HPF, NEID and FIES as their data policies require.
+  \paragraph{Data acknowledgements}
+  Funding for the Sloan Digital Sky Survey IV has been provided by the Alfred P. Sloan
+  Foundation, the U.S. Department of Energy Office of Science, and the Participating
+  Institutions.
+
+  SDSS-IV acknowledges support and resources from the Center for High Performance
+  Computing  at the University of Utah. The SDSS website is www.sdss4.org.
+
+  SDSS-IV is managed by the Astrophysical Research Consortium for the Participating
+  Institutions of the SDSS Collaboration including the Brazilian Participation Group,
+  the Carnegie Institution for Science, Carnegie Mellon University, Center for
+  Astrophysics | Harvard \& Smithsonian, the Chilean Participation Group, the French
+  Participation Group, Instituto de Astrof\'isica de Canarias, The Johns Hopkins
+  University, Kavli Institute for the Physics and Mathematics of the Universe (IPMU) /
+  University of Tokyo, the Korean Participation Group, Lawrence Berkeley National
+  Laboratory, Leibniz Institut f\"ur Astrophysik Potsdam (AIP),  Max-Planck-Institut
+  f\"ur Astronomie (MPIA Heidelberg), Max-Planck-Institut f\"ur Astrophysik (MPA
+  Garching), Max-Planck-Institut f\"ur Extraterrestrische Physik (MPE), National
+  Astronomical Observatories of China, New Mexico State University, New York University,
+  University of Notre Dame, Observat\'ario Nacional / MCTI, The Ohio State University,
+  Pennsylvania State University, Shanghai Astronomical Observatory, United Kingdom
+  Participation Group, Universidad Nacional Aut\'onoma de M\'exico, University of
+  Arizona, University of Colorado Boulder, University of Oxford, University of
+  Portsmouth, University of Utah, University of Virginia, University of Washington,
+  University of Wisconsin, Vanderbilt University, and Yale University.
+
+  This work has made use of data from the European Space Agency (ESA) mission {\it Gaia}
+  (\url{https://www.cosmos.esa.int/gaia}), processed by the {\it Gaia} Data Processing
+  and Analysis Consortium (DPAC,
+  \url{https://www.cosmos.esa.int/web/gaia/dpac/consortium}). Funding for the DPAC has
+  been provided by national institutions, in particular the institutions participating
+  in the {\it Gaia} Multilateral Agreement.
 
 \end{acknowledgments}
 
