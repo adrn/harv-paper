@@ -216,11 +216,12 @@ multimodal posterior pdfs, such as OFTI in \texttt{orbitize!} \citep{Blunt:2017}
 diffusive nested sampling (DNest4) in \texttt{kima} \citep{Brewer:2011, Faria:2018}, and
 non-reversible parallel tempering (\texttt{Pigeons.jl}) in \texttt{Octofitter}
 \citep{Surjanovic:2023}.
-\texttt{Octofitter} and \texttt{Pigeons.jl} were recently used to sample orbit posterior
-pdfs for the stars in the \textit{Hipparcos}--\gaia\ G23H sample \citep{Thompson:2026a},
-and these samples were then used in a hierarchical model of the companion population of
-63,254 stars \citep{Thompson:2026b}.
-The goal of \harv\ is to enable population inferences with large samples of sources.
+\texttt{Octofitter} and \texttt{Pigeons.jl} were recently used with stars from the
+\textit{Hipparcos}--\gaia\ G23H sample \citep{Thompson:2026a} to sample orbit posterior
+pdfs and infer a hierarchical model of the companion population \citep{Thompson:2026b}.
+\todo{references wrong here}
+The goal of \harv\ is similarly to enable population inferences with large samples of
+sources with companions.
 
 
 %--------------------------------------------------------------------
@@ -1216,6 +1217,7 @@ planet.
 While we were preparing this manuscript, \citet{Kanodia:2026} published a joint analysis
 of the Gaia-4 system using the same data, so we compare our results to theirs below.
 
+\todo{READ AND EDIT THIS PARAGRAPH}
 The \gaia\ \dr{4} pre-release gives the epoch astrometry for each field-of-view transit
 of the source as separate along-scan centroid positions, with formal uncertainties, for
 each CCD in the astrometric field, measured from a reference point near the catalog
@@ -2267,43 +2269,9 @@ or photometry), but these are not specific to \harv.
 \section{Summary}
 \label{sec:summary}
 
-We present \harv, a successor to \joker\ built on \jax\ for inferring the orbits
-of stellar companions from radial velocities and \gaia\ epoch astrometry.
-Its design lets every source in a large survey, including sources with sparse or low
-signal-to-noise data, enter a population inference.
-Our main points are:
-\begin{itemize}
-  \item Every \harv\ model is linear in a subset of its parameters (the velocity
-    semi-amplitude and systemic velocity, the five astrometric parameters, and the
-    angular semi-major axis or the Thiele--Innes constants).
-    \harv\ marginalizes over these analytically, including for truncated normal and
-    mixture prior pdfs, so we only have to sample the nonlinear parameters
-    (Sections~\ref{sec:design} and \ref{sec:methods}).
-  \item The rejection sampler returns independent posterior samples however multimodal
-    the posterior pdf is, along with diagnostics and evidence estimates.
-    Because the models are differentiable \jax\ code, the same models also work with
-    gradient-based MCMC or nested sampling when the data are too informative for
-    rejection sampling (Sections~\ref{sec:methods} and \ref{sec:cases-interop}).
-  \item In four case studies, we demonstrate the rejection sampler on sparse \apogee\
-    RVs, a joint model of RVs and \gaia\ \dr{4} epoch astrometry for Gaia-4b, a
-    comparison of rejection and nested sampling, and a population inference on
-    simulated data that uses every star --- including stars without companions and
-    stars with poorly constrained orbits --- with no detection threshold
-    (Section~\ref{sec:case-studies}).
-  \item The cost of rejection sampling grows exponentially with the information in the
-    data, $\mathcal{H}$, whereas the cost of nested sampling grows linearly with it.
-    For informative data, the cost of rejection sampling grows as a power of the total
-    signal-to-noise ratio of the orbit, with an exponent equal to the number of sampled
-    parameters (Sections~\ref{sec:methods-scaling}, \ref{sec:cases-interop}, and
-    \ref{sec:performance}).
-    The rejection sampler is therefore cheapest for the sparse and noisy data where
-    other samplers struggle, and the Thiele--Innes parameterization of the astrometric
-    orbit, with only three sampled parameters, extends its reach to more informative
-    data.
-  \item On one CPU core, \harv\ is between about 2 and 40 times faster than \joker,
-    with the speed-up growing with the number of observations, and on one GPU it is
-    about 300 times faster for 8 observations (Section~\ref{sec:performance}).
-\end{itemize}
+We describe \harv, a successor to \joker\ built on \jax\ for inferring the orbits of
+stellar companions from radial velocities and \gaia\ epoch astrometry.
+\todo{Summarize}
 
 \harv\ is open-source software available at \url{https://github.com/adrn/harv}.
 This article uses version \todo{0.x} (\todo{Zenodo DOI}), and the documentation is at
