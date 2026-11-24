@@ -1,40 +1,3 @@
-% TODO:
-% - A final check with Claude: did we say correct things about the code?
-% - Is the text too repetitive?
-% - Define $\hat{R}$ at first occurrence and cite Gelman.
-% - Change from f_0 (which can be confused with f) to some other symbol. It's not M_0,
-%   that's an angle, but it's M_0 / (2π) I think.
-% - Move the information argument into Methods. The point that rejection cost grows like
-%   e^H while nested sampling cost grows like H is the paper's most useful conceptual
-%   result, and Section 5.2 relies on it. Right now it first appears inside case study
-%   3. Introduce it in Section 3 and let case study 3 confirm it. It's also worth a line
-%   in the abstract.
-% - Retitle case study 3. It's really "rejection vs. nested sampling"; the interop demo
-%   is about 15 lines. Also limit the nested-sampling conclusions to this implementation
-%   and these settings (the blackjax nested slice sampler). Implementations with
-%   clustering or ellipsoid proposals handle mode weights differently, and someone from
-%   that community will push back.
-% - Consider splitting Sections 2–3 into "Models" (RV and along-scan equations,
-%   parameterizations, extensions) and "Inference". At the moment the model equations
-%   sit under "Software design".
-% - Notation clashes. These land right in the hierarchical bookkeeping, where readers
-%   most need clean notation:
-%     - w means three things: importance weights, population reweighting weights, and
-%       mixture weights.
-%     - M is both the number of survivors and the mean anomaly.
-%     - H is the information, a Thiele–Innes constant, and part of H_ϖ.
-%     - In Appendix B, σ_k is used for both the prior and the conditional-posterior
-%       widths.
-% - One reweighting equation, not three. Eqs. hierarchical, reweight and pop-mixture
-%   state the same estimator with different normalizations. Write it once carefully,
-%   including the top-M weighted case, and refer back to it.
-% - Use present tense, active voice. "is drawn from", "is marginalized" etc should be
-%   edited.
-% - Audit figure captions.
-% - Make sure figures have suptitles.
-% - Add harv version tag to abstract so we only have to quote it in one place.
-% - Add ExoPlanetLab https://arxiv.org/pdf/2611.13770 to other packages list.
-
 \documentclass[twocolumn]{AASTeX7/aastex701}
 
 \shorttitle{\texttt{harv}: fast companion orbit inference in \jax}
@@ -76,10 +39,10 @@
 
 \begin{abstract}
 Population studies of stellar companions (binary stars, exoplanets, compact objects)
-often use systems with well-constrained orbits. \todo{Bad wording and unclear intent}
-Inferring population statistics from such a sample then requires modeling the detection
-efficiency of the orbit-fitting pipeline along with the survey selection function,
-usually through injection/recovery tests.
+often only use systems with well-constrained orbits.
+Inferring population statistics then requires modeling the detection efficiency of the
+orbit-fitting pipeline along with the survey selection function, usually through
+injection/recovery tests.
 An alternative approach is to include every source from the parent sample in the
 population inference.
 This requires generating posterior samples even for sources with sparse, noisy, or null
@@ -331,11 +294,10 @@ position is
   \quad ,
   \label{eq:al-model}
 \end{align}
-where $(\alpha_0, \delta_0)$ are offsets in position at the reference time \todo{or are
-the a reference position at the reference time?},
-$(\mu_\alpha, \mu_\delta)$ are the proper motion components, $\varpi$ is the parallax,
-$\Delta t = t - t_{\rm ref}$, and $\psi$ and $H_\varpi$ are the scan angle and the
-along-scan parallax factor of the transit (provided as metadata).
+where $(\alpha_0, \delta_0)$ are offsets in position at the reference time relative to a
+reference position, $(\mu_\alpha, \mu_\delta)$ are the proper motion components,
+$\varpi$ is the parallax, $\Delta t = t - t_{\rm ref}$, and $\psi$ and $H_\varpi$ are
+the scan angle and the along-scan parallax factor of the transit (provided as metadata).
 The orbit enters through the astrometric coordinates $(X, Y)$
 (Equation~\ref{eq:conv-orbit}) and through the Thiele--Innes constants $(A, B, F, G)$
 (Equation~\ref{eq:conv-thiele-innes}), which include the angular semi-major axis of the
@@ -1920,9 +1882,10 @@ where $s_n$ is the orbital signal at observation $n$ (after subtracting the mode
 without a companion --- i.e., constant velocity for RV data or the five parameter
 astrometric solution for astrometry), and this is the total SNR over all $N$
 observations, not the signal-to-noise ratio of a single visit or transit.
-We expect the posterior volume over the $d$ sampled parameters to shrink like ${\rm
-SNR}^{-d}$ when the number of observations is large or when the SNR is high, so we
-expect $\epsilon \propto {\rm SNR}^{-d}$ (asymptotically). \todo{this sentence is unqualified - does it need more derivation?}
+From the Fisher information, within a posterior mode, we expect the posterior volume
+over the $d$ sampled parameters to scale like ${\rm SNR}^{-d}$ (when the number of
+observations is large or when the SNR is high), so we expect $\epsilon \propto {\rm
+SNR}^{-d}$ (asymptotically).
 The number of sampled parameters $d = (4, 6, 3)$ for the three parameterizations we
 consider here: the standard RV parameterization, the standard \gaia\ parameterization,
 and the Thiele--Innes \gaia\ parameterization, respectively (the nonlinear parameters in
@@ -1955,7 +1918,7 @@ parallax is marginalized (Section~\ref{sec:methods-priors-nonlinear}).
 For the Thiele--Innes parameterization, we use the same priors, with a Gaussian prior on
 each Thiele--Innes constant that has the same width as the prior on $a_0$.
 We do not apply a Jacobian correction, so the implied prior on $a_0$ and the orientation
-of the orbit differs from the standard one. \todo{shouldn't we apply the Jacobian?}
+of the orbit differs from the standard parameterization.
 We use the same simulated data for both \gaia\ parameterizations.
 For each data type, we use one orbit shape, but we vary the amplitude of the signal ---
 that is, for RVs, we use $P = 200~\unit{day}$ and $e = 0.3$ over a baseline of 3 years,
@@ -2336,8 +2299,6 @@ or photometry), but these are not specific to \harv.
 
 \section{Conventions}
 \label{apx:conventions}
-
-\todo{Check}
 
 Here we summarize the conventions that \harv\ uses for orbital phase, the orientation of
 the orbit, and the signs of the amplitudes in the radial velocity and astrometric
