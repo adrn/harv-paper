@@ -27,11 +27,11 @@
 \begin{document}
 
 \title{
-  \texttt{harv}: \\
-  Fast companion orbit inference with radial velocity and \gaia\ epoch astrometry data
+  \texttt{harv}:
+  Fast orbit sampling for binary stars, exoplanets, and compact objects \\
+  with radial velocities and \textit{Gaia} epoch astrometry
+  % Fast companion orbit inference with radial velocity and \gaia\ epoch astrometry data
 }
-% TODO: title -> do we want to emphasize fast? And companion -> exoplanet, binary star,
-% and compact object?
 
 \author[orcid=0000-0003-0872-7098]{Adrian M. Price-Whelan}
 \email{aprice-whelan@flatironinstitute.org}
@@ -1943,22 +1943,6 @@ The number of sampled parameters is $D = (4, 6, 3)$ for the three parameterizati
 consider here: the standard RV parameterization, the standard \gaia\ parameterization,
 and the Thiele--Innes \gaia\ parameterization, respectively (the nonlinear parameters in
 Table~\ref{tab:parameterizations}), when the parallax is marginalized.
-% With the default \gaia\ priors, the parallax is sampled too
-% (Section~\ref{sec:methods-priors-nonlinear}), but its precision does not depend on the
-% orbit, so it multiplies the cost by a constant factor of about $1/\epsilon_\varpi$
-% instead of adding a power of the SNR, with
-% $\epsilon_\varpi \approx \sqrt{2}\,\sigma_\varpi/\sigma_{\varpi,{\rm prior}}$ for a
-% Gaussian likelihood under a much broader Gaussian prior.
-% For the standard RV parameterization, $d = 4$ corresponding to ($P$, $e$, phase,
-% $\omega$) and for the standard \gaia\ parameterization, $d = 7$ corresponding to ($P$,
-% $e$, phase, $\omega$, $\Omega$, $\cos i$, $\varpi$) where the parallax $\varpi$ is
-% typically sampled in the rejection sampler because the prior on $a_0$ depends on it (see
-% Section~\ref{sec:methods-priors-nonlinear}).
-% With the Thiele--Innes \gaia\ parameterization, the orientation angles and semi-major
-% axis parameters get absorbed into the four linear T--I constants
-% (Section~\ref{sec:design-parameterizations}), which means that $d = 4$ ($P$, $e$,
-% \todo{phase}, $\varpi$), so the cost of the rejection sampler should scale more like the
-% RV case.
 
 We test these scalings numerically with simulated data.
 We use the prior from Section~\ref{sec:cases-apogee} for RVs and the prior from
@@ -2358,6 +2342,10 @@ article are available at \url{https://github.com/adrn/harv-paper}.
   support and assistance with computing resources.
   The Flatiron Institute is a division of the Simons Foundation.
 
+  This work made use of Astropy,\footnote{https://www.astropy.org} a community-developed
+  core Python package and an ecosystem of tools and resources for astronomy
+  \citep{astropy:2013, astropy:2018, astropy:2022}.
+
   \paragraph{LLM disclosure}
   I used Claude Opus 4.8, 5.0, and 5.5 during the software development process to
   brainstorm code design and implement features.
@@ -2402,10 +2390,21 @@ article are available at \url{https://github.com/adrn/harv-paper}.
 
 \end{acknowledgments}
 
-% TODO: software
-% \software{harv, JAX, numpyro, equinox, unxt, quax, tinygp, Jupyter
-%           astropy, arviz, h5py, matplotlib, numpy, scipy, thejoker
-%           }
+\software{
+  \texttt{harv} \citep{harv:zenodo}, % TODO
+  \texttt{astropy} \citep{astropy:2013, astropy:2018, astropy:2022},
+  \texttt{blackjax} \citep{Cabezas:2024},
+  \texttt{equinox} \citep{Kidger:2021},
+  \texttt{JAX} \citep{Bradbury:2018},
+  \texttt{Jupyter} \citep{Granger:2021},
+  \texttt{matplotlib} \citep{Hunter:2007},
+  \texttt{numpy} \citep{Harris:2020},
+  \texttt{numpyro} \citep{phan2019composable},
+  \texttt{pymc} \citep{pymc2023},
+  \texttt{thejoker} \citep{Price-Whelan:2017},
+  \texttt{tinygp} \citep{Foreman-Mackey:2026},
+  \texttt{unxt} \citep{Starkman:2025}.
+}
 
 \appendix
 
