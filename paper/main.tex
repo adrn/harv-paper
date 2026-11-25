@@ -22,6 +22,7 @@
 \newcommand{\harv}{\package{harv}}
 \newcommand{\joker}{\textsl{The Joker}}
 \newcommand{\targESS}{\ensuremath{J_{\rm eff}^*}}
+\newcommand{\harvversion}{0.1.0}
 
 \begin{document}
 
@@ -139,7 +140,7 @@ posterior samples of the per-system parameters $\vec{\theta}_n$ for each source
 independently under an ``interim'' prior $p(\vec{\theta}_n \given \vec{\alpha}_0)$, and
 then reweighting the samples using the population prior $p(\vec{\theta}_n \given
 \vec{\alpha})$ \citep[e.g.,][]{Hogg:2010, Foreman-Mackey:2014, Price-Whelan:2020}.
-Each term in the product above is then an average of the ratio of priors
+Each term in the product above is then proportional to an average of the ratio of priors
 $p(\vec{\theta}_n \given \vec{\alpha}) / p(\vec{\theta}_n \given \vec{\alpha}_0)$ over
 the posterior samples for source $n$ (Equation~\ref{eq:reweight} in
 Section~\ref{sec:methods-rejection}).
@@ -619,6 +620,14 @@ The integrals over $\vec{\beta}$ then become weighted sums over the mixture comp
 \end{equation}
 where the subscript $i$ indicates a quantity computed for mixture component $i$, and all
 mixture components share the same truncated domain.
+% The weights $\eta_i$ apply to the untruncated components, and the mixture is truncated
+% and normalized as a whole, which is why the denominator is a single sum.
+% With a mixture prior, the conditional posterior pdf of $\vec{\beta}$ is also a mixture,
+% with component weights proportional to $\eta_i\,Z_{{\rm post},i}\,p_{{\rm
+% untrunc},i}(\vec{y} \given \vec{\theta})$.
+% To sample the linear parameters (step 5 in Section~\ref{sec:methods-rejection}), we
+% first choose a component with these weights and then draw from that component's
+% (truncated) conditional posterior pdf.
 
 
 %--------------------------------------------------------------------
@@ -669,7 +678,7 @@ When using these priors, we therefore technically have to sample the parallax ex
 along with the nonlinear parameters.
 This lowers the efficiency of the rejection sampler for every source, because the
 parallax is usually measured \emph{much} more precisely than the width of the prior on
-parallax (Section~\ref{sec:performance}).
+parallax.
 When the parallax is already well measured, for example in a catalog like \gaia, we
 can instead compute the prior widths using the catalog value of the parallax.
 We can then treat the parallax as a linear parameter to marginalize over.
@@ -1000,7 +1009,7 @@ The first three case studies use published data, and the last case study uses si
 data so that we know the true population parameters.
 Each case study is reproduced by a set of scripts or Jupyter notebooks in the repository
 that accompanies this article,\footnote{See the ``scripts'' directory in
-\url{https://github.com/adrn/harv-paper}.} using version \todo{0.x} of \harv.
+\url{https://github.com/adrn/harv-paper}.} using version \harvversion\ of \harv.
 
 %--------------------------------------------------------------------
 \subsection{Case study 1: APOGEE radial velocities for binary-star systems}
@@ -1451,7 +1460,8 @@ The example data here confirm the scaling of the rejection sampler:
 For the three sources above, the nested sampling runs give $\mathcal{H} = 1.05$, 3.27,
 and 6.11, so $e^{-\mathcal{H}} = 0.35$, 0.038, and 0.0022, and the rejection runs from
 Section~\ref{sec:cases-apogee} give $J_{\rm eff}/J = 0.28$, 0.021, and 0.0018 ---
-slightly below the expected values but comparable in magnitude.
+slightly below these upper bounds, as expected (Section~\ref{sec:methods-scaling}), and
+comparable in magnitude.
 
 The nested sampling runs for 2M20183197+1953430 ($\mathcal{H} \approx 26$) take about
 330 iterations, compared with about 130 for 2M15323868+4218297 ($\mathcal{H} \approx
@@ -1490,7 +1500,7 @@ then following up with nested sampling or MCMC.
     modes. This is likely because consecutive points are highly correlated and we do not
     have enough live points.
     With 10,000 live points, the samples look much more like the rejection samples, but
-    each run takes about 90 times as long as a rejection run, and the probabilities of
+    each run takes about 20 times as long as a rejection run, and the probabilities of
     some modes differ between runs (see text in Section~\ref{sec:cases-interop}).
     \label{fig:nested-sampling}
   }
@@ -1658,6 +1668,11 @@ $\sigma_{v_0} = 50~\unit{km.s^{-1}}$.
 As in Section~\ref{sec:cases-apogee}, we draw $J = 10^7$ prior samples once and run the
 rejection sampler on every star using these samples; we keep at most 1024 samples per
 star.
+Because every star's samples come from the same library of prior samples, the Monte
+Carlo errors in the per-star sums of Equation~\ref{eq:pop-mixture} are correlated
+between stars.
+This does not bias the sum for any one star, but the variance of the population
+log-likelihood can be larger than the sum of the per-star variances.
 After this stage, 182 of 256 sources return 1024 samples, 40 sources return $\leq3$
 samples, and 34 sources return an intermediate number of samples.
 For stars with fewer than 1024 samples, we follow up the rejection sampling with other
@@ -1779,8 +1794,6 @@ and the binaries with poorly constrained orbits.
 In other words, we do not have to select stars by the signal-to-noise ratio of the
 inferred orbital parameters or by the detection significance.
 
-% TODO: Is it worth adding a statement or disclaimer above that monte carlo sums are
-% correlated because we use the same prior samples for all stars?
 
 %--------------------------------------------------------------------
 \section{Performance benchmarks}
@@ -1908,7 +1921,7 @@ or a time
 where $R$ is the number of prior samples evaluated per second.
 $R(N)$ depends on the number of observations, the parameterization, and the device, but
 not on the values of the data.
-The efficiency $\epsilon$ depends on the data: $\epsilon \approx e^{-\mathcal{H}}$,
+The efficiency $\epsilon$ depends on the data: $\epsilon \lesssim e^{-\mathcal{H}}$,
 where $\mathcal{H}$ is the information over the sampled parameters
 (Section~\ref{sec:methods-scaling}).
 
@@ -2024,7 +2037,6 @@ with the total SNR.
 % SNR of 1), compared with $1/\epsilon_\varpi \approx 90$ and 200 from
 % $\epsilon_\varpi \approx \sqrt{2}\,\sigma_\varpi/(1~\unit{mas})$.
 
-% \todo{edit text down if possible}
 % For the representative companions, the giant planet ($3~\unit{\Mjup}$) has a total
 % SNR of at most 1.4 in both surveys, on the flat part of every curve: it takes about
 % $10^4$ prior samples with RVs, 3--$9 \times 10^4$ with the standard \gaia\
@@ -2043,9 +2055,9 @@ with the total SNR.
 % parameterization: $9 \times 10^6$ prior samples for $N = 40$ transits and
 % $4 \times 10^8$ for $N = 250$ (1~s and 2~min on one GPU).
 % At $G \approx 17$, the same star is 6.3 times farther away, so $a_0$ is 6.3 times
-% smaller, and with $\sigma_{\rm AL} \approx \todo{0.4}~\unit{mas}$ per transit even the
+% smaller, and with $\sigma_{\rm AL} \approx {0.4}~\unit{mas}$ per transit even the
 % M dwarf has a total SNR of at most about 1, and the parallax is measured to only
-% \todo{0.04--0.1}~\unit{mas}: the rejection sampler is cheap there even with the parallax
+% {0.04--0.1}~\unit{mas}: the rejection sampler is cheap there even with the parallax
 % sampled, but the data barely constrain the orbit.
 % For more informative data, nested sampling or MCMC is the better choice
 % (Section~\ref{sec:discussion-rejection}).
@@ -2313,19 +2325,20 @@ Our main conclusions are:
     The rejection sampler is therefore most useful for sparse, noisy, or
     low-signal-to-noise data where other samplers struggle.
     But it is still useful as a first step for inference with more informative data.
-  \item On one CPU core, \harv\ is between about 3 and 40 times faster than \joker\ and
-    the speed-up factor grows with the number of observations.
+  \item On one CPU core, \harv\ is between about 3 and 40 times faster than \joker\
+    (for 4 to 128 observations), and the speed-up factor grows with the number of
+    observations.
     Its performance scales linearly with the number of prior samples or observations on
     both CPU and GPU, and it can be parallelized across multiple CPU cores or GPUs to
     make survey-wide applications feasible.
-    On one GPU it is between 100 to thousands of times faster than \joker\ about 300
-    times faster for 8 observations (Section~\ref{sec:performance}).
+    On one GPU, it is about 300 times faster than \joker\ for 8 observations
+    (Section~\ref{sec:performance}).
 \end{itemize}
 
 \harv\ is open-source software available at \url{https://github.com/adrn/harv} and via
 the Python Package Index (\texttt{pip install harv}).
-This article uses version \todo{0.x} (\todo{Zenodo DOI}), and the documentation is at
-\todo{documentation URL}.
+This article uses version \harvversion, and the documentation is at
+\url{https://harvey.readthedocs.io/}.
 The notebooks and scripts that reproduce the case studies, figures, and tables in this
 article are available at \url{https://github.com/adrn/harv-paper}.
 
