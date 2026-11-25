@@ -260,7 +260,7 @@ parameters, we can analytically marginalize over the linear parameters to reduce
 dimensionality of the parameter space we need to sample over.
 We describe this marginalization in more detail in Section~\ref{sec:methods-marginal}.
 Table~\ref{tab:notation} (Appendix~\ref{apx:conventions}) lists the symbols that we use
-in more than one section of this article.
+in more than one section of the main text.
 
 \subsection{Parameterizations of the models}
 \label{sec:design-parameterizations}
@@ -1487,10 +1487,10 @@ then following up with nested sampling or MCMC.
     \textit{Right:} The same, for a run with 10,000 live points.
     All of these runs give the same evidence and find the same period modes.
     With 1000 live points, the samples from nested sampling appear clumpy within the
-    modes. This is likely because consecutive dead points along a slice walk are highly
-    correlated, and we do not have enough live points.
+    modes. This is likely because consecutive points are highly correlated and we do not
+    have enough live points.
     With 10,000 live points, the samples look much more like the rejection samples, but
-    each run takes about 20 times as long as a rejection run, and the probabilities of
+    each run takes about 90 times as long as a rejection run, and the probabilities of
     some modes differ between runs (see text in Section~\ref{sec:cases-interop}).
     \label{fig:nested-sampling}
   }
@@ -1871,10 +1871,11 @@ core, at the typical number of observations per star in the sample.
   \caption{
     Wall time of the rejection sampler as a function of the number of prior samples $J$
     (left, for $N = 8$ observations) and as a function of the number of observations $N$
-    (right, for $J = 10^6$), for \joker\ on one CPU core and \harv\ on one CPU core and
-    on one GPU.
+    (right, for $J = 10^6$).
+    Two lines (red and blue) show runs of \joker\ and \harv\ on only one CPU core,
+    respectively, and the third line (green) shows \harv\ on one GPU.
     In the right panel, the wall time in seconds equals the time per prior sample in
-    microseconds.
+    microseconds (we use $10^6$ prior samples).
     The vertical arrows mark the speed-up of \harv\ over \joker\ at $J = 10^7$ (left)
     and $N = 128$ (right).
     \label{fig:bench-thejoker}
@@ -1923,9 +1924,9 @@ without a companion --- i.e., constant velocity for RV data or the five paramete
 astrometric solution for astrometry), and this is the total SNR over all $N$
 observations, not the signal-to-noise ratio of a single visit or transit.
 From the Fisher information, when the number of observations or the total SNR is large,
-the posterior volume within a mode over the $d$ sampled parameters scales like ${\rm
-SNR}^{-d}$, so we expect $\epsilon \propto {\rm SNR}^{-d}$.
-The number of sampled parameters is $d = (4, 6, 3)$ for the three parameterizations we
+the posterior volume within a mode over the $D$ sampled parameters scales like ${\rm
+SNR}^{-D}$, so we expect $\epsilon \propto {\rm SNR}^{-D}$.
+The number of sampled parameters is $D = (4, 6, 3)$ for the three parameterizations we
 consider here: the standard RV parameterization, the standard \gaia\ parameterization,
 and the Thiele--Innes \gaia\ parameterization, respectively (the nonlinear parameters in
 Table~\ref{tab:parameterizations}), when the parallax is marginalized.
@@ -1999,7 +2000,7 @@ The flat level depends on the parameterization and data.
 Above a total SNR of about 3 (RVs and standard \gaia) or 10 (Thiele--Innes), the cost
 (i.e. the number of prior samples we need to reach a certain number of effective
 samples) rises steeply.
-In each panel, we plot a dashed line proportional to (total SNR)$^d$, where $d$ is the
+In each panel, we plot a dashed line proportional to (total SNR)$^D$, where $D$ is the
 number of sampled parameters.
 The measured cost scales roughly as expected with the total SNR, except for the standard
 RV parameterization with $N=3$ or 6 observations (left panel).
@@ -2054,24 +2055,26 @@ with the total SNR.
   \includegraphics[width=\textwidth]{figures/bench-ess.pdf}
   \caption{
     The number of prior samples needed to get $\targESS = 128$ effective samples from
-    the posterior, as a function of the total SNR of the orbit.
-    We fix the uncertainty of each observation at the survey-like values given in the
-    text, and the amplitude of the orbit sets the total SNR.
-    The lines show the median and range from three realizations of the simulated data,
-    and we show a few choices for the number of observations $N$.
-    The dashed line is proportional to (total SNR)$^d$.
+    the posterior as a function of the total SNR of the orbit.
+    We fix the uncertainty of each observation at the motivated values given in the
+    text, and the amplitude of the orbit then sets the total SNR.
+    We arbitrarily pick a $1~\unit{\Msun}$ host star for the \gaia\ astrometry and an
+    apparent magnitude $G = 13$.
+    The (purple) lines show the median and range from three realizations of the
+    simulated data, and we show a few choices for the number of observations $N$.
+    The dashed line is proportional to (total SNR)$^D$ where $D$ is the number of
+    sampled parameters for each parameterization.
     The horizontal gray line at $10^9$ is the largest number of prior samples we
-    consider, and the curves end where even $10^9$ prior samples give $J_{\rm eff} < 128$.
-    The right vertical axis gives the time on one GPU at the largest $N$ in each panel.
+    consider (the curves end where even $10^9$ prior samples give $J_{\rm eff} < 128$).
+    % The right vertical axis gives the time on one GPU at the largest $N$ in each panel.
     Bars at the top show ranges of the total SNR for the three representative companions
-    described in the text for different numbers of observations.
-    \textit{Left}: The standard RV parameterization, with $d = 4$ sampled parameters.
-    \textit{Middle}: The standard \gaia\ parameterization, with $d = 6$ sampled
+    for different numbers of observations.
+    \textit{Left}: The standard RV parameterization, with $D = 4$ sampled parameters.
+    \textit{Middle}: The standard \gaia\ parameterization, with $D = 6$ sampled
     parameters.
-    \textit{Right}: The Thiele--Innes \gaia\ parameterization, with $d = 3$ sampled
+    \textit{Right}: The Thiele--Innes \gaia\ parameterization, with $D = 3$ sampled
     parameters.
     In both \gaia\ panels, we marginalize the parallax.
-    \todo{Need to add notes about the host and error properties. Also can say what parallax the G=13 star has.}
     \label{fig:bench-ess}
   }
 \end{figure*}
@@ -2396,77 +2399,58 @@ article are available at \url{https://github.com/adrn/harv-paper}.
 \section{Notation and conventions}
 \label{apx:conventions}
 
-Table~\ref{tab:notation} lists the symbols that we use in more than one section of this
-article along with the first use or where each symbol is defined.
+Table~\ref{tab:notation} lists the symbols that we use in more than one section of the
+main text, along with where each is defined or first used.
+Symbols that appear in only one section, including those in these appendices, are
+defined where they are used.
 
 \begin{table*}
   \centering
-  \caption{Symbols used in more than one section of this article.}
+  \caption{Symbols used in more than one section of the main text.}
   \label{tab:notation}
-  \begin{tabular}{lll}
+  \begin{tabular}{l>{\raggedright\arraybackslash}p{0.5\textwidth}l}
     \hline
     Symbol & Description & Defined / first used \\
     \hline
     \multicolumn{3}{l}{\textbf{Orbit and data}} \\
-    $t_{\rm ref}$ & reference time for a source & App.~\ref{apx:conventions} \\
-    $P$ & orbital period & Eq.~\ref{eq:rv-model} \\
-    $e$ & eccentricity & Eq.~\ref{eq:rv-model} \\
-    $\tau$ & time of pericenter passage after $t_{\rm ref}$, in units of $P$
-      & Sec.~\ref{sec:design-parameterizations} \\
-    $\omega$ & argument of pericenter of the observed star & Eq.~\ref{eq:rv-model} \\
-    $\Omega$ & longitude of the ascending node & App.~\ref{apx:conventions} \\
-    $i$ & inclination & App.~\ref{apx:conventions} \\
-    $f$, $M$ & true and mean anomaly & App.~\ref{apx:conventions} \\
-    $K$ & RV semi-amplitude & Eq.~\ref{eq:rv-model} \\
-    $v_0$ & systemic velocity & Eq.~\ref{eq:rv-model} \\
-    $a_0$ & angular semi-major axis of the photocenter orbit
-      & Sec.~\ref{sec:design-parameterizations} \\
+    $P$, $e$, $\tau$, $\omega$ & period, eccentricity, phase (time of pericenter in units of
+      $P$), and argument of pericenter & Eq.~\ref{eq:rv-model} \\
+    $K$, $v_0$ & RV semi-amplitude and systemic velocity & Eq.~\ref{eq:rv-model} \\
+    $\Omega$, $i$ & longitude of the ascending node and inclination & Eq.~\ref{eq:al-model} \\
+    $a_0$ & angular semi-major axis of the photocenter orbit & Eq.~\ref{eq:al-model} \\
     $A$, $B$, $F$, $G$ & Thiele--Innes constants & Eq.~\ref{eq:conv-thiele-innes} \\
     $\varpi$ & parallax & Eq.~\ref{eq:al-model} \\
-    $\alpha_0$, $\delta_0$ & position offsets at $t_{\rm ref}$ & Eq.~\ref{eq:al-model} \\
-    $\mu_\alpha$, $\mu_\delta$ & proper motion components & Eq.~\ref{eq:al-model} \\
-    $\psi$, $H_\varpi$ & scan angle and along-scan parallax factor of a transit
-      & Eq.~\ref{eq:al-model} \\
+    $m_2$ & companion mass & Sec.~\ref{sec:methods-priors-nonlinear} \\
     $N$ & number of observations of a source & Eq.~\ref{eq:linear-model} \\
+    $T$ & time spanned by the observations of a source & Sec.~\ref{sec:methods-evidence} \\
     \hline
     \multicolumn{3}{l}{\textbf{Linear parameters and marginalization}} \\
-    $N$ & number of observations of a source & Sec.~\ref{sec:intro} \\
-    $Q$ & number of linear parameters in the model & Sec.~\ref{sec:design} \\
-    $\vec{y}$ or $y_n$ & data for one source & Eq.~\ref{eq:linear-model} \\
+    $\vec{y}$ & data for one source ($\vec{y}_n$ for source $n$) & Eq.~\ref{eq:linear-model} \\
+    $\vec{\theta}$, $\vec{\beta}$ & nonlinear and linear parameters & Eq.~\ref{eq:linear-model} \\
+    $\mat{X}$, $Q$ & $N \times Q$ design matrix, and number of linear parameters
+      & Eq.~\ref{eq:linear-model} \\
     $\mat{C}$ & covariance matrix of the data & Sec.~\ref{sec:methods-marginal} \\
-    $\vec{\theta}$ & nonlinear parameters & Eq.~\ref{eq:linear-model} \\
-    $\vec{\beta}$ & the $Q$ linear parameters & Eq.~\ref{eq:linear-model} \\
-    $\mat{X}$ & $N \times Q$ design matrix & Eq.~\ref{eq:linear-model} \\
     $\vec{\mu}$, $\mat{\Lambda}$ & mean and covariance of the prior pdf over $\vec{\beta}$
       & Sec.~\ref{sec:methods-marginal} \\
-    $\vec{a}$, $\mat{A}$ & mean and covariance of the conditional posterior pdf over
-      $\vec{\beta}$ & Eq.~\ref{eq:refactor} \\
-    $\sigma_{K,0}$, $\sigma_{a,0}$, $\sigma_{v,0}$ & scales of the prior pdfs over $K$,
-      $a_0$, and the proper motion & Eqs.~\ref{eq:sigma-K}, \ref{eq:sigma-a} \\
+    $\sigma_{K,0}$, $\sigma_{a,0}$, $\sigma_{v,0}$, $P_0$ & scales of the prior pdfs over
+      $K$, $a_0$, and the proper motion, and reference period
+      & Eqs.~\ref{eq:sigma-K}, \ref{eq:sigma-a} \\
     \hline
     \multicolumn{3}{l}{\textbf{Sampling}} \\
     $J$ & number of prior samples & Sec.~\ref{sec:methods-rejection} \\
-    $\mathcal{G}$ & marginal likelihood of a prior sample & Sec.~\ref{sec:methods-rejection} \\
-    $S$ & number of returned samples & Sec.~\ref{sec:methods-rejection} \\
-    $w_j$ & importance weight of prior sample $j$ & Eq.~\ref{eq:weights} \\
-    $J_{\rm eff}$ & effective sample size & Sec.~\ref{sec:methods-rejection} \\
-    $\ln\mathcal{B}$ & log Bayes factor of the companion model relative to no companion
-      & Sec.~\ref{sec:cases-apogee} \\
+    $S$, $S_n$ & number of returned samples (for source $n$) & Sec.~\ref{sec:methods-rejection} \\
+    $\mathcal{G}$, $\mathcal{G}_{\rm max}$ & marginal likelihood of a prior sample, and its
+      largest value over the prior samples
+      & Secs.~\ref{sec:methods-marginal}, \ref{sec:methods-rejection} \\
+    $J_{\rm eff}$ & effective sample size & Eq.~\ref{eq:ess} \\
     $\mathcal{H}$ & information (Kullback--Leibler divergence from prior to posterior)
       & Eq.~\ref{eq:information} \\
-    $\epsilon$ & efficiency of the rejection sampler, $J_{\rm eff}/J$
-      & Sec.~\ref{sec:performance} \\
-    $d$ & number of sampled parameters & Sec.~\ref{sec:performance} \\
-    SNR & total signal-to-noise ratio of the orbit over all $N$ observations
-      & Sec.~\ref{sec:performance} \\
     \hline
     \multicolumn{3}{l}{\textbf{Population inference}} \\
-    $\vec{\alpha}$ & hyperparameters of the population model & Sec.~\ref{sec:intro} \\
-    $\vec{\alpha}_0$ & hyperparameters of the interim prior used for sampling
-      & Sec.~\ref{sec:intro} \\
+    $\vec{\alpha}$, $\vec{\alpha}_0$ & hyperparameters of the population model and of the
+      interim prior & Sec.~\ref{sec:intro} \\
     $Z_{{\rm int},n}$ & evidence for source $n$ under the interim prior
       & Eq.~\ref{eq:reweight} \\
-    $S_n$ & number of samples for source $n$ & Eq.~\ref{eq:reweight} \\
     $w_{nk}$, $r_{nk}$ & weight and prior ratio of sample $k$ of source $n$
       & Eq.~\ref{eq:reweight} \\
     \hline
@@ -2599,18 +2583,18 @@ mas) depending on the context (most often angular units for astrometry applicati
 We instead write the astrometric model (Equation~\ref{eq:al-model}) in terms of
 angular offsets on the sky,
 \begin{equation}
-  \Delta\delta = \frac{x}{d}
+  \Delta\delta = \frac{\varpi\,x}{1~\unit{au}}
   \quad , \quad
-  \Delta\alpha^* = \Delta\alpha\,\cos\delta = \frac{y}{d}
+  \Delta\alpha^* = \Delta\alpha\,\cos\delta = \frac{\varpi\,y}{1~\unit{au}}
   \quad ,
 \end{equation}
-relative to some reference position $(\alpha_0, \delta_0)$, and where $d = (1~\unit{au})
-/ \varpi$ is the distance to the system.
+relative to some reference position $(\alpha_0, \delta_0)$, where $(1~\unit{au}) /
+\varpi$ is the distance to the system.
 We can therefore write the astrometric model in terms of the Thiele--Innes constants, as
 is common, such that
 \begin{equation}
   \begin{pmatrix} \Delta\delta \\ \Delta\alpha^* \end{pmatrix} =
-  \frac{1}{d}
+  \frac{\varpi}{1~\unit{au}}
   \begin{pmatrix} A & F \\ B & G \end{pmatrix}
   \begin{pmatrix} X \\ Y \end{pmatrix}
   \quad .
@@ -2690,14 +2674,14 @@ We write a truncated normal prior pdf over parameters $\vec{\beta}$, which may d
 other parameters $\vec{\theta}$, as
 \begin{equation}
   p(\vec{\beta} \given \vec{\theta}) = \frac{1}{Z_{\rm prior}} \,
-    \norm(\vec{\beta} \given \vec{\mu}, \mat{\Lambda}) \, T(\vec{\beta})
+    \norm(\vec{\beta} \given \vec{\mu}, \mat{\Lambda}) \, \mathbf{1}_\mathbb{S}(\vec{\beta})
   \quad ,
 \end{equation}
-where $T(\vec{\beta})$ is equal to one when $\vec{\beta}$ is in the allowed domain and
-zero otherwise, and $Z_{\rm prior}$ is the normalization constant that makes the pdf
-integrate to 1 over the allowed domain (so here, $\mathcal{N}(\cdot)$ is the untruncated
-normal pdf).
-The allowed domain, $\mathbb{S}$, is rectangular, so each truncated parameter
+where the indicator function $\mathbf{1}_\mathbb{S}(\vec{\beta})$ is equal to one when
+$\vec{\beta}$ is in the allowed domain $\mathbb{S}$ and zero otherwise, and
+$Z_{\rm prior}$ is the normalization constant that makes the pdf integrate to 1 over
+$\mathbb{S}$ (so here, $\mathcal{N}(\cdot)$ is the untruncated normal pdf).
+The allowed domain is rectangular, so each truncated parameter
 $\beta_{k'}$ is restricted to an interval $(l_k, h_k)$, and is potentially one-sided, in
 which either $l_k$ or $h_k$ may be infinite.
 The other linear parameters $\beta_{k\neq k'}$ are unconstrained.
@@ -2707,7 +2691,7 @@ Using the refactorization in Equation~(\ref{eq:refactor}),
   p(\vec{y} \given \vec{\theta})
   &=& \frac{1}{Z_{\rm prior}} \int \dd\vec{\beta} \,
     \norm(\vec{y} \given \mat{X}\,\vec{\beta}, \mat{C}) \,
-    \norm(\vec{\beta} \given \vec{\mu}, \mat{\Lambda}) \, T(\vec{\beta}) \\
+    \norm(\vec{\beta} \given \vec{\mu}, \mat{\Lambda}) \, \mathbf{1}_\mathbb{S}(\vec{\beta}) \\
   &=& \frac{1}{Z_{\rm prior}} \,
     \norm(\vec{y} \given \mat{X}\,\vec{\mu},
       \mat{C} + \mat{X}\,\mat{\Lambda}\,\transp{\mat{X}})
@@ -2738,7 +2722,7 @@ However, it does simplify because we integrate the unconstrained parameters over
 full domain, and marginalizing a Gaussian over some of its dimensions leaves a Gaussian
 in the remaining dimensions with the corresponding elements of the mean and covariance
 matrix.
-$Z_{\rm post}$ is therefore the integral over the allowed intervals of a Gaussian in
+$Z_{\rm post}$ is therefore the integral over the truncated domain of a Gaussian in
 only the truncated parameters.
 For each truncated parameter, we define the standardized bounds
 \begin{equation}
@@ -2773,24 +2757,23 @@ There is no closed-form expression for $\Phi_2$, but we can write it as
 $\Phi(u)\,\Phi(v)$ plus a one-dimensional integral over the correlation coefficient
 (from 0 to $\rho$) \citep{Plackett:1954}.
 Through a change of variables, substituting $\rho \rightarrow \sin\xi$, we can transform
-the integral into a form that is bounded and smooth for any $\rho$, so we evaluate the
-integral with a fixed Gauss--Legendre quadrature with 64 nodes over the interval $[0,
-\arcsin\rho]$.
+the integral into a form that is bounded and smooth, so we evaluate the integral with a
+fixed Gauss--Legendre quadrature with 64 nodes over the interval $[0, \arcsin\rho]$.
 With fixed bounds and number of nodes, we can compile this evaluation with \jax\ and
 autodiff works through this as expected.
 
-There is one subtlety with implementing this approach numerically, which we identified
-by debugging an inconsistent test with Claude Opus 5.5.
-When the truncated domain contains a small fraction of the probability mass of the
-conditional posterior, the four terms in Equation~(\ref{eq:corners}) nearly cancel, so
-the sum loses numerical precision.
-The smaller $Z_{\rm post}$ is, the worse the precision loss.
-When $Z_{\rm post}$ is too small to be distinguished from round-off error in the sum, we
-set $Z_{\rm post} = 0$, so that the marginal likelihood for that sample of the nonlinear
-parameters is clamped to zero.
-This technically under-weights these samples, but the alternative (which led to the bug)
-is that the sum can lead to a value that over-weights the samples, which is worse.
-In practice, this only discards samples whose weights would have been negligible.
+There is one subtlety with implementing this approach numerically, which is that the sum
+in Equation~(\ref{eq:corners}) can lose numerical precision when the truncated domain
+contains a small fraction of the probability mass of the conditional posterior.
+In this case, the four terms in Equation~(\ref{eq:corners}) nearly cancel, so the result
+is dominated by round-off error in the sum.
+This issue is worse when $Z_{\rm post}$ is small, which occurs when the truncated domain
+is far from the mean of the conditional posterior.
+We clamp the value of $Z_{\rm post}$ so that it is set to $Z_{\rm post}$ = 0 when the
+value is too small to be distinguished from round-off error in the sum.
+This technically under-weights some affected samples, but the alternative (not clamping)
+can lead to a value that over-weights the samples, which is worse.
+In practice, this only discards samples whose weights would have been negligible anyway.
 
 When three or more linear parameters have truncated domains, $Z_{\rm post}$
 is an integral of a three or more dimensional Gaussian with a dense covariance matrix
@@ -2817,8 +2800,8 @@ with $\tilde{t} = (t - a_1)/\sqrt{A_{11}}$.
 This is equivalent to Equation~(\ref{eq:corners}) with the upper bound $h_1$ replaced by
 $t$, divided by $Z_{\rm post}$.
 We draw $u$ uniformly between 0 and 1 and solve $F(\beta_1) = u$ with bisection using a
-fixed number of steps (60), which, in our tests, resolves $\beta_1$ without numerical
-precision concerns.
+fixed number of steps (60), which, in our tests, resolves $\beta_1$ sufficiently
+precisely at double precision.
 We then draw $\beta_2$ given $\beta_1$ from a one-dimensional truncated normal with mean
 $a_2 + A_{12}\,(\beta_1 - a_1)/A_{11}$ and variance $A_{22} - A_{12}^2/A_{11}$.
 We sample the unconstrained parameters from their Gaussian pdf conditioned on both of
