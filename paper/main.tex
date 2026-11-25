@@ -243,6 +243,46 @@ sources with companions.
 \section{Software design}
 \label{sec:design}
 
+\begin{table*}
+  \centering
+  \caption{
+    The parameterizations implemented in \harv, with their nonlinear and linear
+    parameters.
+    For \texttt{SqrtEccRV}, $\lambda = \omega - 2\pi\tau$ is the mean longitude at the
+    reference time $t_{\rm ref}$.
+    For the Fourier parameterizations, the number of Fourier terms is user-defined, so
+    the number of linear coefficients $a_k$ and $b_k$ depends on the number of terms.
+    \label{tab:parameterizations}
+  }
+  \begin{tabular}{lll}
+    \hline
+    Parameterization & Nonlinear parameters & Linear parameters \\
+    \hline
+    \multicolumn{3}{l}{\textit{Radial velocities}} \\
+    \texttt{StandardRV} &
+      $P$, $e$, $\tau$, $\omega$ &
+      $K$, $v_0$ \\
+    \texttt{SqrtEccRV} &
+      $P$, $\sqrt{e}\cos\omega$, $\sqrt{e}\sin\omega$, $\lambda$ &
+      $K$, $v_0$ \\
+    \texttt{FourierRV} &
+      $P$ &
+      $v_0$, $a_k$, $b_k$ \\
+    \multicolumn{3}{l}{\textit{\gaia\ epoch astrometry}} \\
+    \texttt{StandardGaiaAstrometry} &
+      $P$, $e$, $\tau$, $\omega$, $\Omega$, $\cos i$ &
+      $\alpha_0$, $\delta_0$, $\mu_\alpha$, $\mu_\delta$, $\varpi$, $a_0$ \\
+    \texttt{ThieleInnesGaiaAstrometry} &
+      $P$, $e$, $\tau$ &
+      $\alpha_0$, $\delta_0$, $\mu_\alpha$, $\mu_\delta$, $\varpi$, $A$, $B$, $F$,
+      $G$ \\
+    \texttt{FourierGaiaAstrometry} &
+      $P$ &
+      $\alpha_0$, $\delta_0$, $\mu_\alpha$, $\mu_\delta$, $\varpi$, $a_k$, $b_k$ \\
+    \hline
+  \end{tabular}
+\end{table*}
+
 \harv\ is designed to generate posterior samplings over the orbital parameters for
 two-body systems.
 Much of the design of \harv\ is informed by the fact that, for such systems, the model
@@ -341,45 +381,6 @@ A user can therefore add a new data format by writing a parameterization class t
 computes the model prediction, and then use the rest of \harv\ to set prior pdfs,
 marginalize (or not) over the linear parameters, and generate posterior samples.
 
-\begin{table*}
-  \centering
-  \caption{
-    The parameterizations implemented in \harv, with their nonlinear and linear
-    parameters.
-    For \texttt{SqrtEccRV}, $\lambda = \omega - 2\pi\tau$ is the mean longitude at the
-    reference time $t_{\rm ref}$.
-    For the Fourier parameterizations, the number of Fourier terms is user-defined, so
-    the number of linear coefficients $a_k$ and $b_k$ depends on the number of terms.
-    \label{tab:parameterizations}
-  }
-  \begin{tabular}{lll}
-    \hline
-    Parameterization & Nonlinear parameters & Linear parameters \\
-    \hline
-    \multicolumn{3}{l}{\textit{Radial velocities}} \\
-    \texttt{StandardRV} &
-      $P$, $e$, $\tau$, $\omega$ &
-      $K$, $v_0$ \\
-    \texttt{SqrtEccRV} &
-      $P$, $\sqrt{e}\cos\omega$, $\sqrt{e}\sin\omega$, $\lambda$ &
-      $K$, $v_0$ \\
-    \texttt{FourierRV} &
-      $P$ &
-      $v_0$, $a_k$, $b_k$ \\
-    \multicolumn{3}{l}{\textit{\gaia\ epoch astrometry}} \\
-    \texttt{StandardGaiaAstrometry} &
-      $P$, $e$, $\tau$, $\omega$, $\Omega$, $\cos i$ &
-      $\alpha_0$, $\delta_0$, $\mu_\alpha$, $\mu_\delta$, $\varpi$, $a_0$ \\
-    \texttt{ThieleInnesGaiaAstrometry} &
-      $P$, $e$, $\tau$ &
-      $\alpha_0$, $\delta_0$, $\mu_\alpha$, $\mu_\delta$, $\varpi$, $A$, $B$, $F$,
-      $G$ \\
-    \texttt{FourierGaiaAstrometry} &
-      $P$ &
-      $\alpha_0$, $\delta_0$, $\mu_\alpha$, $\mu_\delta$, $\varpi$, $a_k$, $b_k$ \\
-    \hline
-  \end{tabular}
-\end{table*}
 
 
 \subsection{Assumptions}
@@ -1015,6 +1016,32 @@ that accompanies this article,\footnote{See the ``scripts'' directory in
 \subsection{Case study 1: APOGEE radial velocities for binary-star systems}
 \label{sec:cases-apogee}
 
+\begin{table*}
+  \centering
+  \caption{
+    Results for the six \apogee\ sources, using the same $J = 10^7$ prior
+    samples, except for 2M15035796-4533457 and 2M20183197+1953430, for which we use a
+    second run with $J = 10^8$ new prior samples (see text).
+    $N$ is the number of visits, $T$ is the time spanned by the visits, $S$ is the
+    number of samples that survive the rejection step, $J_{\rm eff}$ is the effective
+    sample size, and $\ln\mathcal{B}$ is the log Bayes factor of the companion model
+    relative to a constant-velocity model.
+    For sources with $J_{\rm eff} < 3$, the evidence estimate and therefore
+    $\ln\mathcal{B}$ is unreliable, so we mark these values with a dagger.
+    \label{tab:apogee}
+  }
+  \begin{tabular}{lrrrrrl}
+    \hline
+                 &        &          & Number of           & Effective     & Log Bayes        & Sampling \\
+     \apogee\ ID & Visits & Baseline & Rejection samples   & sample size   & factor           & outcome  \\
+                 & $N$    & $T$ [\unit{day}] & $S$                 & $J_{\rm eff}$ & $\ln\mathcal{B}$ &          \\
+    \hline
+    \input{tables/cs1-apogee-output.tex}
+    \\
+    \hline
+  \end{tabular}
+\end{table*}
+
 This first case study demonstrates the basic functionality of \harv\ and shows the
 typical pipeline for analyzing a small sample of stars that may have varied data
 quality and time sampling.
@@ -1093,31 +1120,6 @@ these larger runs (see below).
   }
 \end{figure*}
 
-\begin{table*}
-  \centering
-  \caption{
-    Results for the six \apogee\ sources, using the same $J = 10^7$ prior
-    samples, except for 2M15035796-4533457 and 2M20183197+1953430, for which we use a
-    second run with $J = 10^8$ new prior samples (see text).
-    $N$ is the number of visits, $T$ is the time spanned by the visits, $S$ is the
-    number of samples that survive the rejection step, $J_{\rm eff}$ is the effective
-    sample size, and $\ln\mathcal{B}$ is the log Bayes factor of the companion model
-    relative to a constant-velocity model.
-    For sources with $J_{\rm eff} < 3$, the evidence estimate and therefore
-    $\ln\mathcal{B}$ is unreliable, so we mark these values with a dagger.
-    \label{tab:apogee}
-  }
-  \begin{tabular}{lrrrrrl}
-    \hline
-                 &        &          & Number of           & Effective     & Log Bayes        & Sampling \\
-     \apogee\ ID & Visits & Baseline & Rejection samples   & sample size   & factor           & outcome  \\
-                 & $N$    & $T$ [\unit{day}] & $S$                 & $J_{\rm eff}$ & $\ln\mathcal{B}$ &          \\
-    \hline
-    \input{tables/cs1-apogee-output.tex}
-    \\
-    \hline
-  \end{tabular}
-\end{table*}
 
 For the two sources with $N=3$ visits, the rejection sampler returns many samples with a
 large effective sample size; the data are fairly uninformative, and the posterior pdf is
@@ -1231,6 +1233,42 @@ per-source inferences, as we have done in \citet{Price-Whelan:2020}.
 astrometry}
 \label{sec:cases-gaia4}
 
+\begin{figure*}
+  \centering
+  \includegraphics[width=\textwidth]{figures/gaia4-joint.pdf}
+  \caption{
+    Results from the joint model for Gaia-4.
+    \textit{Left:} The \gaia\ \dr{4} along-scan positions after subtracting the
+    five-parameter (sky position, proper motion, and parallax) astrometric solution of
+    the best-fit model. Black points show the data as a function of orbital phase, and
+    green open markers show the model predictions at the same epochs.
+    \textit{Middle:} The orbit of the photocenter on the sky for 128 posterior samples.
+    \textit{Right:} The RVs from the three instruments, corrected with the inferred
+    (median) offset values, and the model predictions for 128 posterior samples.
+    \label{fig:gaia4}
+  }
+\end{figure*}
+
+\begin{table*}
+  \centering
+  \caption{
+    Posterior constraints for Gaia-4b from the astrometry alone and from the joint
+    model (median and 68\% interval), compared with published values.
+    The companion mass assumes a stellar mass of $0.644~\unit{\Msun}$
+    \citep{Stefansson:2025}.
+    \label{tab:gaia4}
+  }
+  \begin{tabular}{lcccc}
+    \hline
+    Parameter & Astrometry only & Joint model & \citet{Kanodia:2026} &
+      \citet{Stefansson:2025} \\
+    \hline
+    \input{tables/cs2-gaia4-joint.tex}
+    \\
+    \hline
+  \end{tabular}
+\end{table*}
+
 This second case study demonstrates how to use \harv\ to model a source with both radial
 velocity and astrometric data, and with very informative data that precisely constrain
 the orbital parameters.
@@ -1278,8 +1316,8 @@ semi-major axis of the photocenter orbit have parallax-dependent scales, set by 
 tangential velocity scale of $100~\unit{km.s^{-1}}$ and by $\sigma_{a,0} = 1~\unit{au}$
 (Equation~\ref{eq:sigma-a}), respectively.
 We compute these scales from the \gaia\ \dr{3} parallax, $13.643~\unit{mas}$, so that
-they do not depend on the parallax parameter, and the parallax is marginalized along with
-the other linear parameters (Section~\ref{sec:methods-priors-nonlinear}).
+they do not depend on the parallax parameter, and the parallax is marginalized along
+with the other linear parameters (Section~\ref{sec:methods-priors-nonlinear}).
 This assumes that the orbit does not bias the catalog parallax much, which holds here
 because the photocenter orbit is small compared with the parallax and the period is not
 close to 1 year.
@@ -1334,40 +1372,6 @@ posterior probability.
 The two optima have a difference of $\Delta \ln p \approx 82$, so the RV data clearly
 break this degeneracy.
 
-\begin{figure*}
-  \centering
-  \includegraphics[width=\textwidth]{figures/gaia4-joint.pdf}
-  \caption{
-    Results from the joint model for Gaia-4.
-    \textit{Left:} The \gaia\ \dr{4} along-scan positions after subtracting the
-    five-parameter (sky position, proper motion, and parallax) astrometric solution of
-    the best-fit model. Black points show the data as a function of orbital phase, and
-    green open markers show the model predictions at the same epochs.
-    \textit{Middle:} The orbit of the photocenter on the sky for 128 posterior samples.
-    \textit{Right:} The RVs from the three instruments, corrected with the inferred (median) offset values, and the model predictions for 128 posterior samples.
-    \label{fig:gaia4}
-  }
-\end{figure*}
-
-\begin{table*}
-  \centering
-  \caption{
-    Posterior constraints for Gaia-4b from the astrometry alone and from the joint
-    model (median and 68\% interval), compared with published values.
-    The companion mass assumes a stellar mass of $0.644~\unit{\Msun}$
-    \citep{Stefansson:2025}.
-    \label{tab:gaia4}
-  }
-  \begin{tabular}{lcccc}
-    \hline
-    Parameter & Astrometry only & Joint model & \citet{Kanodia:2026} &
-      \citet{Stefansson:2025} \\
-    \hline
-    \input{tables/cs2-gaia4-joint.tex}
-    \\
-    \hline
-  \end{tabular}
-\end{table*}
 
 Figure~\ref{fig:gaia4} shows the data and some predictions from the joint model.
 Table~\ref{tab:gaia4} summaries the results and compares our inferred parameter values
@@ -1639,23 +1643,6 @@ the marker size).
   }
 \end{figure*}
 
-\begin{figure*}
-  \centering
-  \includegraphics[width=\textwidth]{figures/cs4-population.pdf}
-  \caption{
-    Results from a population inference using all 256 simulated stars
-    (Section~\ref{sec:cases-pop-inf}).
-    \textit{Left:} The posterior pdf of the binary fraction $f_{\rm bin}$, with the true
-    value (vertical dashed line).
-    \textit{Other panels:} The population distributions of $\log_{10} P$, $e$, and
-    $\log_{10} m_2$ for the binaries.
-    The blue lines and bands show the median and the 16th to 84th percentiles at each
-    point over 512 posterior samples of $\vec{\alpha}$.
-    The dashed orange lines show the true distributions.
-    The dotted gray lines show the interim prior.
-    \label{fig:population}
-  }
-\end{figure*}
 
 For the inference pipeline, we start by running the \harv\ rejection sampler on each
 simulated system.
@@ -1736,6 +1723,24 @@ $Z_{{\rm single},n}$ is the evidence for the constant-velocity model, which we c
 as in Section~\ref{sec:cases-apogee}.
 Unlike in Equation~\ref{eq:reweight}, the evidences do not cancel here because the two
 terms in the mixture are different models.
+
+\begin{figure*}
+  \centering
+  \includegraphics[width=\textwidth]{figures/cs4-population.pdf}
+  \caption{
+    Results from a population inference using all 256 simulated stars
+    (Section~\ref{sec:cases-pop-inf}).
+    \textit{Left:} The posterior pdf of the binary fraction $f_{\rm bin}$, with the true
+    value (vertical dashed line).
+    \textit{Other panels:} The population distributions of $\log_{10} P$, $e$, and
+    $\log_{10} m_2$ for the binaries.
+    The blue lines and bands show the median and the 16th to 84th percentiles at each
+    point over 512 posterior samples of $\vec{\alpha}$.
+    The dashed orange lines show the true distributions.
+    The dotted gray lines show the interim prior.
+    \label{fig:population}
+  }
+\end{figure*}
 
 For the binaries, the population model is a truncated normal distribution in each of
 $\log_{10} P$ (between 5 and $1000~\unit{day}$), $e$ (between 0 and 1), and $\log_{10}
@@ -1897,6 +1902,34 @@ core, at the typical number of observations per star in the sample.
 
 \subsection{Rejection sampler benchmarks for varied signal-to-noise}
 
+\begin{figure*}
+  \centering
+  \includegraphics[width=\textwidth]{figures/bench-ess.pdf}
+  \caption{
+    The number of prior samples needed to get $\targESS = 128$ effective samples from
+    the posterior as a function of the total SNR of the orbit.
+    We fix the uncertainty of each observation at the motivated values given in the
+    text, and the amplitude of the orbit then sets the total SNR.
+    We arbitrarily pick a $1~\unit{\Msun}$ host star for the \gaia\ astrometry and an
+    apparent magnitude $G = 13$.
+    The (purple) lines show the median and range from three realizations of the
+    simulated data, and we show a few choices for the number of observations $N$.
+    The dashed line is proportional to (total SNR)$^D$ where $D$ is the number of
+    sampled parameters for each parameterization.
+    The horizontal gray line at $10^9$ is the largest number of prior samples we
+    consider (the curves end where even $10^9$ prior samples give $J_{\rm eff} < 128$).
+    Bars at the top show ranges of the total SNR for the three representative companions
+    for different numbers of observations.
+    \textit{Left}: The standard RV parameterization, with $D = 4$ sampled parameters.
+    \textit{Middle}: The standard \gaia\ parameterization, with $D = 6$ sampled
+    parameters.
+    \textit{Right}: The Thiele--Innes \gaia\ parameterization, with $D = 3$ sampled
+    parameters.
+    In both \gaia\ panels, we marginalize the parallax.
+    \label{fig:bench-ess}
+  }
+\end{figure*}
+
 Timing the rejection sampler for different prior sample cache sizes and number of
 observations is useful for understanding the performance of \harv\ in different regimes,
 but in real applications we usually care about the time it takes to return a given
@@ -2046,34 +2079,6 @@ with the total SNR.
 % For more informative data, nested sampling or MCMC is the better choice
 % (Section~\ref{sec:discussion-rejection}).
 
-\begin{figure*}
-  \centering
-  \includegraphics[width=\textwidth]{figures/bench-ess.pdf}
-  \caption{
-    The number of prior samples needed to get $\targESS = 128$ effective samples from
-    the posterior as a function of the total SNR of the orbit.
-    We fix the uncertainty of each observation at the motivated values given in the
-    text, and the amplitude of the orbit then sets the total SNR.
-    We arbitrarily pick a $1~\unit{\Msun}$ host star for the \gaia\ astrometry and an
-    apparent magnitude $G = 13$.
-    The (purple) lines show the median and range from three realizations of the
-    simulated data, and we show a few choices for the number of observations $N$.
-    The dashed line is proportional to (total SNR)$^D$ where $D$ is the number of
-    sampled parameters for each parameterization.
-    The horizontal gray line at $10^9$ is the largest number of prior samples we
-    consider (the curves end where even $10^9$ prior samples give $J_{\rm eff} < 128$).
-    % The right vertical axis gives the time on one GPU at the largest $N$ in each panel.
-    Bars at the top show ranges of the total SNR for the three representative companions
-    for different numbers of observations.
-    \textit{Left}: The standard RV parameterization, with $D = 4$ sampled parameters.
-    \textit{Middle}: The standard \gaia\ parameterization, with $D = 6$ sampled
-    parameters.
-    \textit{Right}: The Thiele--Innes \gaia\ parameterization, with $D = 3$ sampled
-    parameters.
-    In both \gaia\ panels, we marginalize the parallax.
-    \label{fig:bench-ess}
-  }
-\end{figure*}
 
 
 %--------------------------------------------------------------------
@@ -2145,9 +2150,9 @@ cheap.
 In Section~\ref{sec:cases-pop-inf}, 182 of the 256 simulated stars return 1024
 samples from $10^7$ prior samples.
 For informative data, it quickly becomes prohibitive: 2M20183197+1953430
-(Section~\ref{sec:cases-apogee}) has $\mathcal{H} \approx 26$, so resolving its posterior pdf
-would take $\sim 10^{11}$ prior samples (with $10^8$ only one sample survives and is not
-guaranteed to be near the dominant mode).
+(Section~\ref{sec:cases-apogee}) has $\mathcal{H} \approx 26$, so resolving its
+posterior pdf would take $\sim 10^{11}$ prior samples (with $10^8$ only one sample
+survives and is not guaranteed to be near the dominant mode).
 For a large survey, we therefore expect most of the computing time to go to the minority
 of sources that need follow-up with other methods.
 In Section~\ref{sec:cases-pop-inf}, the 33 stars that needed nested sampling (13\% of
@@ -2469,12 +2474,13 @@ defined where they are used.
   \end{tabular}
 \end{table*}
 
-Below, we summarize the conventions that \harv\ uses for orbital phase, the orientation of
-the orbit, and the signs of the amplitudes in the radial velocity and astrometric
+Below, we summarize the conventions that \harv\ uses for orbital phase, the orientation
+of the orbit, and the signs of the amplitudes in the radial velocity and astrometric
 models.
-We choose these conventions so that a single set of orbital elements $(P, e, \tau, \omega,
-\Omega, i)$ describes both the radial velocity and the astrometric orbit of an observed
-star, so we can jointly model the two data types (e.g., Section~\ref{sec:cases-gaia4}).
+We choose these conventions so that a single set of orbital elements $(P, e, \tau,
+\omega, \Omega, i)$ describes both the radial velocity and the astrometric orbit of an
+observed star, so we can jointly model the two data types (e.g.,
+Section~\ref{sec:cases-gaia4}).
 
 Internally, we assume that times have been converted to a solar-system barycentric
 reference frame, and we enforce that all datasets for a given source share a single
